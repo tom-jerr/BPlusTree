@@ -75,3 +75,98 @@ BPlusTree<K, T>::BPlusTree() : root_(nullptr) {}
 
 template <typename K, typename T>
 BPlusTree<K, T>::~BPlusTree() = default;
+
+// Search
+
+/* 在节点中寻找大于等于key的最小键值的位置*/
+template <typename K, typename T>
+int Node<K, T>::find_last_pos(K key) {
+  int low = 0;
+  int high = this->count - 1;
+  int mid = 0;
+  while (low < high) {
+    mid = (low + high + 1) / 2;
+    if (this->keys[mid] >= key) {
+      high = mid - 1;
+    } else {
+      low = mid;
+    }
+  }
+  return high;
+}
+
+template <typename K, typename T>
+T BPlusTree<K, T>::search(K key) {
+  Node<K, T>* pnode = this->root_;
+  int position = 0;
+
+  while (typeid(*(pnode->getclasstype())) != typeid(LeafNode<K, T>)) {
+    position = pnode->find_last_pos(key);
+    // 如果是key = pnode->key[i], 指向pos对应的下一个子节点; 否则,
+    // 指向该pos对应的子节点
+    if (pnode->keys[position] == key) {
+      pnode = static_cast<InnerNode<K, T>*>(pnode)->child[position + 1];
+    } else {
+      pnode = static_cast<InnerNode<K, T>*>(pnode)->child[position];
+    }
+  }
+  // 此时pnode为 leaf node
+  if (pnode->keys[position] == key) {
+    return static_cast<LeafNode<K, T>*>(pnode)->data[position];
+  }
+  return NULL;
+}
+
+template <typename K, typename T>
+std::vector<T> BPlusTree<K, T>::search_range(K begin, K end) {
+  std::vector<T> vec;
+  Node<K, T>* pnode = this->root_;
+  int position = 0;
+
+  while (typeid(*(pnode->getclasstype())) != typeid(LeafNode<K, T>)) {
+    position = pnode->find_last_pos(begin);
+    // 如果是key = pnode->key[i], 指向pos对应的下一个子节点; 否则,
+    // 指向该pos对应的子节点
+    if (pnode->keys[position] == begin) {
+      pnode = static_cast<InnerNode<K, T>*>(pnode)->child[position + 1];
+    } else {
+      pnode = static_cast<InnerNode<K, T>*>(pnode)->child[position];
+    }
+  }
+
+  // leaf node寻找不小于begin的最小的pos
+  position = pnode->find_last_pos(begin);
+  // TODO(lzy): String 比较是否可行
+  if (pnode->keys[position] < begin) {
+    pnode = pnode->next;
+    if (pnode == nullptr) {
+      return vec;
+    }
+    // 进入新节点position从第一个开始计算
+    position = 0;
+  }
+
+  for (int i = position; i < pnode->count && pnode->keys[i] <= end; ++i) {
+    // 提前结束遍历过程
+    if (pnode->keys[i] > end) {
+      return vec;
+    }
+    vec.push_back(pnode->data[i]);
+  }
+
+  while (pnode->keys[pnode->count - 1] <= end && pnode->next != nullptr) {
+    pnode = pnode->next;
+    // 提前结束遍历过程
+    if (pnode->keys[0] > end) {
+      return vec;
+    }
+    for (int i = 0; i < pnode->count && pnode->keys[i] <= end; ++i) {
+      // 提前结束遍历过程
+      if (pnode->keys[i] > end) {
+        return vec;
+      }
+      vec.push_back(pnode->data[i]);
+    }
+  }
+  return vec;
+}

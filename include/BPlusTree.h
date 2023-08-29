@@ -1,6 +1,7 @@
 #ifndef BPLUSTREE_H
 #define BPLUSTREE_H
 
+#include <vector>
 // 声明Inner Node
 template <typename K, typename T>
 class InnerNode;
@@ -20,6 +21,10 @@ class Node {
   explicit Node(int m);
   virtual ~Node();
   virtual Node<K, T>* getclasstype();
+
+  // 寻找key对应的位置
+  // find_last_pos: 寻找不小于key的最小的pos
+  int find_last_pos(KeyType key);
 };
 
 // Leaf Node
@@ -77,7 +82,8 @@ class BPlusTree {
   BPlusTree();
   virtual ~BPlusTree();
 
-  LeafNode<KeyType, DataType>* search(KeyType key);
+  DataType search(KeyType key);
+  std::vector<DataType> search_range(KeyType begin, KeyType end);
   bool tree_insert(KeyType key, DataType data);
   bool tree_delete(KeyType key);
 };
