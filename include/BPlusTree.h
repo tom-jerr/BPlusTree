@@ -1,7 +1,9 @@
 #ifndef BPLUSTREE_H
 #define BPLUSTREE_H
-
+#include <tuple>
+#define MAX_DEGREE 3
 #include <vector>
+
 // 声明Inner Node
 template <typename K, typename T>
 class InnerNode;
@@ -13,18 +15,19 @@ class Node {
   using KeyType = K;
   using DataType = T;
 
-  KeyType* keys;                         // 关键字数组
-  int count;                             // 当前关键字的数量
-  int degree;                            // degree*2=key数
-  InnerNode<KeyType, DataType>* parent;  // 父亲节点
+  int degree{MAX_DEGREE};           // degree*2=key数
+  Node<KeyType, DataType>* parent;  // 父亲节点
+  std::vector<KeyType> keys;        // 关键字数组
+  bool is_leaf;                     // 判断是否为叶子节点
 
-  explicit Node(int m);
+  Node();
   virtual ~Node();
   virtual Node<K, T>* getclasstype();
 
   // 寻找key对应的位置
   // find_last_pos: 寻找不小于key的最小的pos
   int find_last_pos(KeyType key);
+  int key_index(KeyType key);
 };
 
 // Leaf Node
@@ -34,19 +37,21 @@ class LeafNode : public Node<K, T> {
   using KeyType = K;
   using DataType = T;
 
-  DataType* data;
+  std::vector<DataType> data;  // 存放数据
   // 叶子结点使用双向链表连接
-  LeafNode* prev;
-  LeafNode* next;
+  LeafNode* prev;  // 指向前一个leaf node
+  LeafNode* next;  // 指向后一个leaf node
 
-  LeafNode(int m);
+  LeafNode(LeafNode<K, T>* prev_node = nullptr,
+           LeafNode<K, T>* next_node = nullptr);
   virtual ~LeafNode();
   virtual LeafNode<K, T>* getclasstype();
 
+  // 插入叶子节点&超过阈值后分裂节点
   bool insert_leaf(KeyType key, DataType value);
-  LeafNode* split_leaf(LeafNode* p_node);
+  std::tuple<Node<K, T>*, Node<K, T>*, K> split_leaf();
 
-  void print_leaf();
+  bool delete_leaf(KeyType key);
 };
 
 // Inner Node
@@ -56,16 +61,18 @@ class InnerNode : public Node<K, T> {
   using KeyType = K;
   using DataType = T;
 
-  Node<KeyType, DataType>** child;
+  std::vector<Node<KeyType, DataType>*>
+      child;  // 指向孩子节点(inner node or leaf node)
 
-  InnerNode(int m);
-  virtual ~InnerNode();
+  InnerNode();
   virtual InnerNode<K, T>* getclasstype();
 
-  bool insert_inner(InnerNode* p_node, DataType value);
-  InnerNode* split_inner(InnerNode* p_node, KeyType key);
+  int child_index(KeyType key);
 
-  void print_inner();
+  bool insert_inner(std::vector<Node<K, T>*> p_node, KeyType key);
+  std::tuple<Node<K, T>*, Node<K, T>*, K> split_inner();
+
+  bool delete_inner(KeyType key);
 };
 
 // B Plus Tree
@@ -77,6 +84,9 @@ class BPlusTree {
 
  protected:
   Node<KeyType, DataType>* root_;
+  int depth_;
+  int maxcap_;
+  int mincap_;
 
  public:
   BPlusTree();
@@ -84,7 +94,23 @@ class BPlusTree {
 
   DataType search(KeyType key);
   std::vector<DataType> search_range(KeyType begin, KeyType end);
-  bool tree_insert(KeyType key, DataType data);
-  bool tree_delete(KeyType key);
+  void insert_in_parent(std::tuple<Node<K, T>*, Node<K, T>*, K> result);
+  void tree_insert(KeyType key, DataType data);
+  void tree_delete(KeyType key, Node<K, T>* node = nullptr);
+
+  // 辅助函数
+  Node<K, T>* find_leaf(int key);
+  void show_bplustree();
+  // 对叶子节点的操作
+  void borrow_right_leaf(Node<K, T>* node, Node<K, T>* next);
+  void borrow_left_leaf(Node<K, T>* node, Node<K, T>* prev);
+  void merge_right_leaf(Node<K, T>* node, Node<K, T>* next);
+  void merge_left_leaf(Node<K, T>* node, Node<K, T>* prev);
+  // 对内部节点的操作
+  void borrow_right_inner(int pos, Node<K, T>* node, Node<K, T>* next);
+  void borrow_left_inner(int pos, Node<K, T>* node, Node<K, T>* prev);
+  void merge_right_inner(int pos, Node<K, T>* node, Node<K, T>* next);
+  void merge_left_inner(int pos, Node<K, T>* node, Node<K, T>* prev);
 };
+
 #endif  // BPLUSTREE_H
