@@ -1,7 +1,8 @@
-add_executable(TEST InsertTest.cpp StructureTest.cpp main.cpp)
-target_include_directories(TEST PRIVATE ${CMAKE_SOURCE_DIR}/include)
-target_link_libraries(TEST PUBLIC BPLUSTREE gtest_main)
+add_executable(BPLUSTREETEST TestStruct.cpp TestInsert.cpp main.cpp)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
+target_include_directories(BPLUSTREETEST PRIVATE ${CMAKE_SOURCE_DIR}/include)
+target_link_libraries(BPLUSTREETEST PUBLIC BPLUSTREE gtest_main)
 add_test(
-  NAME TEST
-  COMMAND TEST
+  NAME BPLUSTREETEST
+  COMMAND BPLUSTREETEST
 )

@@ -101,6 +101,9 @@ class BPlusTree {
   // 辅助函数
   Node<K, T>* find_leaf(int key);
   void show_bplustree();
+  Node<K, T>* get_root();
+  int get_depth();
+
   // 对叶子节点的操作
   void borrow_right_leaf(Node<K, T>* node, Node<K, T>* next);
   void borrow_left_leaf(Node<K, T>* node, Node<K, T>* prev);

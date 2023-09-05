@@ -1,6 +1,5 @@
-#include "../include/BPlusTree.h"
+#include "../include/CLBPlusTree.h"
 
-#include <cstddef>
 #include <iostream>
 
 template <typename K, typename T>
@@ -69,7 +68,7 @@ int InnerNode<K, T>::child_index(K key) {
 template <typename K, typename T>
 BPlusTree<K, T>::BPlusTree()
     : root_(new LeafNode<K, T>()),
-      depth_(0),
+      depth_(1),
       maxcap_(MAX_DEGREE - 1),
       mincap_(maxcap_ / 2) {}
 
@@ -82,6 +81,16 @@ BPlusTree<K, T>::~BPlusTree() {
 
 // 帮助函数
 
+// 返回根节点
+template <typename K, typename T>
+Node<K, T>* BPlusTree<K, T>::get_root() {
+  return this->root_;
+}
+
+template <typename K, typename T>
+int BPlusTree<K, T>::get_depth() {
+  return this->depth_;
+}
 // 寻找叶子节点
 template <typename K, typename T>
 Node<K, T>* BPlusTree<K, T>::find_leaf(int key) {
@@ -140,7 +149,8 @@ void BPlusTree<K, T>::show_bplustree() {
     std::cout << "\n";
   }
 }
-// Search
+
+// Search帮助函数
 
 /* 在节点中寻找大于等于key的最小键值的位置*/
 template <typename K, typename T>
@@ -168,58 +178,4 @@ int Node<K, T>::key_index(K key) {
     }
   }
   return -1;
-}
-
-template <typename K, typename T>
-T BPlusTree<K, T>::search(K key) {
-  Node<K, T>* leaf = this->find_leaf(key);
-  int index = leaf->key_index(key);
-  if (index == -1) {
-    std::cout << "key " << key << " not found" << std::endl;
-    return NULL;
-  }
-  return static_cast<LeafNode<K, T>*>(leaf)->data[index];
-}
-
-template <typename K, typename T>
-std::vector<T> BPlusTree<K, T>::search_range(K begin, K end) {
-  std::vector<T> vec;
-  Node<K, T>* leaf = this->find_leaf(begin);
-  int position = leaf->find_last_pos(begin);
-  position = leaf->find_last_pos(begin);
-  // TODO(lzy): String 比较是否可行
-  if (leaf->keys[position] < begin) {
-    leaf = leaf->next;
-    if (leaf == nullptr) {
-      return vec;
-    }
-    // 进入新节点position从第一个开始计算
-    position = 0;
-  }
-
-  // 当前节点中符合条件的值
-  for (int i = position; i < leaf->keys.size() && leaf->keys[i] <= end; ++i) {
-    // 提前结束遍历过程
-    if (leaf->keys[i] > end) {
-      return vec;
-    }
-    vec.push_back(leaf->data[i]);
-  }
-
-  // 后面节点中符合条件的值
-  while (leaf->keys[leaf->keys.size() - 1] <= end && leaf->next != nullptr) {
-    leaf = leaf->next;
-    // 提前结束遍历过程
-    if (leaf->keys[0] > end) {
-      return vec;
-    }
-    for (int i = 0; i < leaf->keys.size() && leaf->keys[i] <= end; ++i) {
-      // 提前结束遍历过程
-      if (leaf->keys[i] > end) {
-        return vec;
-      }
-      vec.push_back(leaf->data[i]);
-    }
-  }
-  return vec;
 }

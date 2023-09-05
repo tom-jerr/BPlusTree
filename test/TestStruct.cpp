@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <iostream>
 
-#include "../include/BPlusTree.h"
-#include "../src/BPlusTreeStruct.cpp"
+#include "../include/CLBPlusTree.h"
+#include "../src/CLBPlusTree.cpp"
 void struct_test() {
   auto* node1 = new Node<int, uint64_t>();
   std::cout << sizeof(node1->degree) << "\n";

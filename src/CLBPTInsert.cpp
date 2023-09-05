@@ -1,7 +1,7 @@
 
 #include <iostream>
 
-#include "../include/BPlusTree.h"
+#include "../include/CLBPlusTree.h"
 // Insert Node to Tree
 
 // insert <key, value> to leaf node
@@ -85,7 +85,7 @@ void BPlusTree<K, T>::insert_in_parent(
   // old_node是根节点
   if (right->parent == nullptr) {
     Node<K, T>* new_root = new InnerNode<K, T>();
-    depth_ += 1;
+    this->depth_ += 1;
     new_root->keys.push_back(key);
     static_cast<InnerNode<K, T>*>(new_root)->child = {left, right};
     // static_cast<InnerNode<K, T>*>(new_root)->child.push_back(new_node);
