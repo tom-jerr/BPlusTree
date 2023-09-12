@@ -1,3 +1,3 @@
-# add_library(BPLUSTREE STATIC CLBPlusTree.cpp CLBPTInsert.cpp CLBPTDelete.cpp CLBPTSearch.cpp)
-# target_include_directories(BPLUSTREE PRIVATE ${CMAKE_SOURCE_DIR}/include)
-# set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
+add_executable(TEST test.cpp)
+target_include_directories(TEST PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)

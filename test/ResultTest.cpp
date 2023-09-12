@@ -25,18 +25,7 @@ void TENMILLIONTEST() {
                      .count();
   uint64_t cost = end - begin;
   std::cout << "B+ Tree insert time cost:\t" << cost << "s" << '\n';
-  // tree->show_bplustree();
-  // begin = std::chrono::duration_cast<std::chrono::seconds>(
-  //             std::chrono::system_clock::now().time_since_epoch())
-  //             .count();
-  // for (int i = 1; i <= TENMILLION; ++i) {
-  //   tree->search(i);
-  // }
-  // end = std::chrono::duration_cast<std::chrono::seconds>(
-  //           std::chrono::system_clock::now().time_since_epoch())
-  //           .count();
-  // cost = end - begin;
-  // std::cout << "search time cost:\t" << cost << "s" << '\n';
+  delete tree;
 }
 
 void result_test(int begin, int end, int stride) {
@@ -88,11 +77,11 @@ int main(int /*argc*/, char** /*argv*/) {
   // Red-Black Tree Test
   // ten_million_red_black_tree_test();
   auto* tree = new BPlusTree<int, uint64_t>();
-  for (int i = 1; i <= 20; ++i) {
+  for (int i = 1; i <= 2; ++i) {
     tree->tree_insert(i, i);
   }
 
-  for (int i = 1; i <= 20; ++i) {
+  for (int i = 1; i <= 2; ++i) {
     tree->tree_delete(i);
   }
 

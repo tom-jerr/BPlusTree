@@ -143,7 +143,7 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
 ![不同粒度插入测试](img/different_degree_test.png)
 #### 3.5.2 插入1千万个结点
 - 实现函数中执行时间较长的函数：find_leaf(), insert_inner(), split_leaf(), split_inner(), insert_leaf()
-- 标准库函数size()和[]运行时间较长
+- 标准库函数[]运行时间较长
 
 ![插入性能分析](img/perform_insert.png)
 #### 3.5.3 valgrind测试

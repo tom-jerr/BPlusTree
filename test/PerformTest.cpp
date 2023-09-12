@@ -124,6 +124,7 @@ void ten_million_search() {
             .count();
   cost = end - begin;
   std::cout << "search time cost:\t" << cost << "s" << '\n';
+  delete tree;
 }
 int main(int /*argc*/, char** /*argv*/) {
   // TENSOUSANDTEST();

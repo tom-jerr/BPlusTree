@@ -70,6 +70,9 @@ class InternalNode : public Node<K, T> {
 // B Plus Tree
 template <typename K, typename T>
 class BPlusTree {
+  friend class Serialization;
+  friend Node<K, T>* search_pre_node(Node<K, T>* node);
+
  private:
   Node<K, T>* root_;
   int depth_{1};
@@ -238,13 +241,13 @@ Node<K, T>* BPlusTree<K, T>::find_leaf(int key) {
   Node<K, T>* p_node = this->root_;
   while (!p_node->is_leaf) {
     int flag = 0;
-    for (int i = 0; i < p_node->keys.size(); ++i) {
+    int size = p_node->keys.size();
+    for (int i = 0; i < size; ++i) {
       if (p_node->keys[i] > key) {
         p_node = static_cast<InternalNode<K, T>*>(p_node)->child[i];
         flag = 1;
         break;
       }
-      // TODO(lzy): 验证正确性
       if (p_node->keys[i] == key) {
         p_node = static_cast<InternalNode<K, T>*>(p_node)->child[i + 1];
         flag = 1;
@@ -281,7 +284,8 @@ void BPlusTree<K, T>::show_bplustree() {
       }
       std::cout << "[";
       int nk = 0;
-      for (nk = 0; nk < q[i]->keys.size() - 1; ++nk) {
+      int size = q[i]->keys.size() - 1;
+      for (nk = 0; nk < size; ++nk) {
         std::cout << q[i]->keys[nk] << ",";
       }
       std::cout << q[i]->keys[nk] << "] ";
@@ -294,17 +298,13 @@ void BPlusTree<K, T>::show_bplustree() {
 template <typename K, typename T>
 std::vector<K> BPlusTree<K, T>::bfs() {
   std::vector<K> bpt_keys;
-  // if (this->root_->keys.size() == 0) {
-  //   std::cout << "[]"
-  //             << "\n";
-  //   return;
-  // }
   std::queue<Node<K, T>*> q;
   q.push(root_);
   while (!q.empty()) {
     Node<K, T>* tmp = q.front();
     q.pop();
-    for (int i = 0; i < tmp->keys.size(); ++i) {
+    int size = tmp->keys.size();
+    for (int i = 0; i < size; ++i) {
       bpt_keys.push_back(tmp->keys[i]);
     }
     if (!tmp->is_leaf) {
@@ -326,14 +326,14 @@ int Node<K, T>::find_last_pos(K key) {
   int high = this->keys.size() - 1;
   int mid = 0;
   while (low < high) {
-    mid = (low + high) / 2;
-    if (this->keys[mid] < key) {
-      low = mid;
+    mid = (low + high + 1) / 2;
+    if (this->keys[mid] > key) {
+      high = mid - 1;
     } else {
-      high = mid + 1;
+      low = mid;
     }
   }
-  return low;
+  return high;
 }
 
 template <typename K, typename T>
@@ -349,33 +349,12 @@ int Node<K, T>::find_first_big_pos(K key) {
       high = mid;
     }
   }
-  return low;
+  return high;
 }
 
-template <typename K, typename T>
-int Node<K, T>::find_first_small_pos(K key) {
-  int low = 0;
-  int high = this->keys.size() - 1;
-  int mid = 0;
-  while (low < high) {
-    mid = (low + high) / 2;
-    if (this->keys[mid] <= key) {
-      low = mid + 1;
-    } else {
-      high = mid;
-    }
-  }
-  return low;
-}
 // 寻找key所在的位置
 template <typename K, typename T>
 int Node<K, T>::key_index(K key) {
-  // for (int i = 0; i < this->keys.size(); ++i) {
-  //   if (key == this->keys[i]) {
-  //     return i;
-  //   }
-  // }
-
   int index = this->find_first_big_pos(key);
   if (this->keys[index] == key) {
     return index;
@@ -400,7 +379,7 @@ std::vector<T> BPlusTree<K, T>::search_range(K begin, K end) {
   Node<K, T>* leaf = this->find_leaf(begin);
   int position = leaf->find_last_pos(begin);
   position = leaf->find_last_pos(begin);
-  // TODO(lzy): String 比较是否可行
+
   if (leaf->keys[position] < begin) {
     leaf = static_cast<LeafNode<K, T>*>(leaf)->next;
     if (leaf == nullptr) {
@@ -409,9 +388,9 @@ std::vector<T> BPlusTree<K, T>::search_range(K begin, K end) {
     // 进入新节点position从第一个开始计算
     position = 0;
   }
-
+  int leaf_size = leaf->keys.size();
   // 当前节点中符合条件的值
-  for (int i = position; i < leaf->keys.size() && leaf->keys[i] <= end; ++i) {
+  for (int i = position; i < leaf_size && leaf->keys[i] <= end; ++i) {
     // 提前结束遍历过程
     if (leaf->keys[i] > end) {
       return vec;
@@ -427,7 +406,8 @@ std::vector<T> BPlusTree<K, T>::search_range(K begin, K end) {
     if (leaf->keys[0] > end) {
       return vec;
     }
-    for (int i = 0; i < leaf->keys.size() && leaf->keys[i] <= end; ++i) {
+    int leaf_size = leaf->keys.size();
+    for (int i = 0; i < leaf_size && leaf->keys[i] <= end; ++i) {
       // 提前结束遍历过程
       if (leaf->keys[i] > end) {
         return vec;
@@ -449,14 +429,10 @@ bool LeafNode<K, T>::insert_leaf(K key, T value) {
     this->data.push_back(value);
     return true;
   }
-  for (; (i < this->keys.size()) && (key > this->keys[i]); ++i) {
+  i = this->find_first_big_pos(key);
+  if (this->keys[i] < key) {
+    i++;
   }
-  // if (i == this->keys.size()) {
-  //   this->keys.insert(this->keys.end(), key);
-  //   this->data.insert(this->data.end(), value);
-  //   return true;
-  // }
-  // i = this->find_first_small_pos(key);
   this->keys.insert(this->keys.begin() + i, key);
   this->data.insert(this->data.begin() + i, value);
   return true;
@@ -466,7 +442,9 @@ bool LeafNode<K, T>::insert_leaf(K key, T value) {
 template <typename K, typename T>
 bool InternalNode<K, T>::insert_inner(std::vector<Node<K, T>*> p_node, K key) {
   int i = 0;
-  for (; (i < this->keys.size()) && (key > this->keys[i]); ++i) {
+  i = this->find_first_big_pos(key);
+  if (this->keys[i] < key) {
+    i++;
   }
   this->keys.insert(this->keys.begin() + i, key);
   // 将孩子指针修改；其父亲指针指向原来节点
@@ -551,7 +529,6 @@ void BPlusTree<K, T>::insert_in_parent(
   }
 }
 
-// TODO(lzy):内存泄漏
 template <typename K, typename T>
 void BPlusTree<K, T>::tree_insert(K key, T data) {
   bool op_leaf = false;
