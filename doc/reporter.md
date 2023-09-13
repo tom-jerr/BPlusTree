@@ -48,6 +48,21 @@
 - 如果此时叶子结点的关键字数量小于最小的容纳值；向兄弟结点借关键字或者和兄弟结点合并
 - 继续处理父结点，删除该父结点上对应的关键字；如果父结点关键字数量小于最小的容纳值；向兄弟结点借关键字或者和兄弟结点合并
 - 递归过程直到根结点删除结束；如果删除后根结点没有关键字，根结点变成原来根结点最左边的孩子结点
+### 2.2.4 序列化反序列化
+- 序列化：
+  - 先把B+树的除根结点以外的成员写入；
+  - 写结点：
+    - 写入is_leaf, 关键字数量, 所有的关键字；
+    - 对内部结点的孩子递归该过程；
+    - 对叶子结点直接读入关键字对应的值
+- 反序列化，最后返回根结点：
+  - 先把B+树的除根结点以外的成员读入；
+  - 读结点，最后返回一个结点：
+    - 读is_leaf, 关键字数量, 所有的关键字；
+    - 递归该过程，返回的结点是该结点的孩子结点；
+    - 对叶子结点直接读入关键字对应的值
+  - 将叶子结点读取完毕后，需要重建叶子结点的链表；需要找到每个叶子结点的前驱结点；进行链表的复原
+
 ## 3 代码实现
 ### 3.1 目录组织
 - .vscode: 环境配置
@@ -131,6 +146,78 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
     child->parent = node;
   }
 }
+~~~
+
+#### 3.4.3 反序列化寻找前驱叶子结点
+~~~c++
+template <typename K, typename T>
+Node<K, T>* search_pre_node(Node<K, T>* node) {
+  if (node == nullptr || !node->is_leaf) {
+    return nullptr;
+  }
+  int index = 0;
+  Node<K, T>* parent = nullptr;
+  Node<K, T>* prenode = nullptr;
+
+  if (node->parent == nullptr) {
+    return nullptr;
+  }
+
+  while (node->parent != nullptr) {
+    parent = node->parent;
+    index = 0;
+    // 寻找孩子结点对应的index
+    while (static_cast<InternalNode<K, T>*>(parent)->child[index] != node) {
+      index++;
+    }
+
+    if (index) {
+      // 寻找其兄弟结点最右侧的叶子结点
+      prenode = static_cast<InternalNode<K, T>*>(parent)->child[index - 1];
+      // 一直到叶子结点
+      while (!prenode->is_leaf) {
+        prenode = static_cast<InternalNode<K, T>*>(prenode)
+                      ->child[prenode->keys.size()];
+      }
+      return prenode;
+    }
+    // 该结点为最左侧孩子结点
+    node = parent;
+  }
+  return nullptr;
+}
+~~~
+
+#### 3.4.4 反序列化重建链表
+~~~c++
+if (!is_leaf) {
+    for (int i = 0; i < num + 1; ++i) {
+      static_cast<InternalNode<K, T>*>(pnode)->child.push_back(
+          read_node<K, T>(fd, pnode));
+    }
+    // 叶子结点链表恢复
+    for (int i = 0; i < num + 1; ++i) {
+      Node<K, T>* node = static_cast<InternalNode<K, T>*>(pnode)->child[i];
+      // 将链表连接起来
+      // 找到每个结点的前驱结点
+      Node<K, T>* prenode = search_pre_node(node);
+      if (prenode) {
+        static_cast<LeafNode<K, T>*>(prenode)->next =
+            static_cast<LeafNode<K, T>*>(node);
+        static_cast<LeafNode<K, T>*>(node)->prev =
+            static_cast<LeafNode<K, T>*>(prenode);
+      }
+    }
+  } else {
+    // 读叶子结点
+    int data = 0;
+    for (int i = 0; i < num; ++i) {
+      if (read(fd, &data, sizeof(T)) == -1) {
+        throw std::runtime_error("read data element error\n");
+      }
+      static_cast<LeafNode<K, T>*>(pnode)->data.push_back(data);
+    }
+  }
 ~~~
 ### 3.5 程序分析
 #### 3.5.1 测试插入不同数量级的结点
@@ -304,8 +391,36 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
 - 对插入100个结点的key值进行查询
 ##### 4.1.3.2 范围查找
 - 查询：1-20之间的数据
-#### 4.1.4 测试结果
+
+#### 测试结果
+
 ![单元测试](img/unit_test.png)
+
+#### 4.1.5 序列化反序化测试
+- 输入：tree(插入<1,1>,<2,2>,<3,3>)
+- 反序列化后，插入：<4,4>; 然后依次删除直到成为空树
+~~~shell
+tree before serialize:
+[2] 
+[1] [2,3] 
+serialized content length:      67
+tree after deserialize:
+[2] 
+[1] [2,3] 
+insert <4,4>
+[2,3] 
+[1] [2] [3,4] 
+delete 1
+[3] 
+[2] [3,4] 
+delete 2
+[4] 
+[3] [4] 
+delete 3
+[4] 
+delete 4
+[]
+~~~
 ### 4.2 性能测试
 - 插入1千万个结点：37s左右
 - 查询1千万个结点：4s左右
@@ -313,7 +428,21 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
 
 ![性能测试](img/perform_time_cost.png)
 ## 5 总结
+- 插入操作
+  - 最开始寻找插入位置, 寻找key在关键字数组中的索引都使用的for循环线性查找; 现在改为二分查找
+  - key数量超过最大容纳数量后,需要分裂结点,最初只返回一个新分裂的结点
+  - 实际插入过程中发现还需要分裂后新结点的首个key; `insert_in_parent`函数需要同时传入原来的结点和分裂后的结点;
+  - 最后`split_leaf`,`split_inner`的返回值设计为`std::tuple<Node<K,T>*, Node<K,T>*, int>`形式; `insert_in_parent`函数参数也为该形式
+- 删除操作
+  - 将结点的借出操作和合并操作定义在B+树中, 方便操作
+  - 合并内部结点, 最开始直接将兄弟结点的关键字直接插入, 发现树的变化有问题; 发现需要考虑该结点的父结点的关键字
+- 序列化反序列化
 
+   > 最开始忘记叶子结点链表的构建, 反序列化后的B+树删除有问题
+  - 反序列化叶子结点链表的构建
+    - 需要找到叶子结点的前驱结点
+    - 在内部结点处理逻辑中进行叶子结点链表的恢复
+  - 使用open函数, clang-tidy 提示`Do not call c-style vararg functions`, 暂时未解决
 
 
 

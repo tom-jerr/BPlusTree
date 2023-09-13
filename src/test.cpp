@@ -21,5 +21,13 @@ int main(int /*argc*/, char** /*argv*/) {
   std::cout << "tree after deserialize:\n";
   tree_deserialize->show_bplustree();
 
+  std::cout << "insert <4,4>\n";
+  tree_deserialize->tree_insert(4, 4);
+  tree_deserialize->show_bplustree();
+  for (int i = 1; i <= 4; ++i) {
+    std::cout << "delete " << i << "\n";
+    tree_deserialize->tree_delete(i);
+    tree_deserialize->show_bplustree();
+  }
   return 0;
 }

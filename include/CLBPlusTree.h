@@ -26,7 +26,7 @@ class Node {
   // find_last_pos: 寻找不小于key的最小的pos
   int find_last_pos(K key);
   int find_first_big_pos(K key);
-  int find_first_small_pos(K key);
+
   // 寻找key再keys数组中的索引
   int key_index(K key);
 };

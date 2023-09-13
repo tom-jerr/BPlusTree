@@ -175,16 +175,16 @@ Node<K, T>* Serialization::read_node(const int& fd, Node<K, T>* parent) {
       static_cast<InternalNode<K, T>*>(pnode)->child.push_back(
           read_node<K, T>(fd, pnode));
     }
-    // TODO(lzy): 叶子结点链表恢复
+    // 叶子结点链表恢复
     for (int i = 0; i < num + 1; ++i) {
       Node<K, T>* node = static_cast<InternalNode<K, T>*>(pnode)->child[i];
       // 将链表连接起来
       // 找到每个结点的前驱结点
-      Node<K, T>* prenode = search_pre_node(pnode);
+      Node<K, T>* prenode = search_pre_node(node);
       if (prenode) {
         static_cast<LeafNode<K, T>*>(prenode)->next =
-            static_cast<LeafNode<K, T>*>(pnode);
-        static_cast<LeafNode<K, T>*>(pnode)->prev =
+            static_cast<LeafNode<K, T>*>(node);
+        static_cast<LeafNode<K, T>*>(node)->prev =
             static_cast<LeafNode<K, T>*>(prenode);
       }
     }
@@ -195,6 +195,7 @@ Node<K, T>* Serialization::read_node(const int& fd, Node<K, T>* parent) {
       if (read(fd, &data, sizeof(T)) == -1) {
         throw std::runtime_error("read data element error\n");
       }
+      static_cast<LeafNode<K, T>*>(pnode)->data.push_back(data);
     }
   }
   return pnode;
@@ -213,23 +214,28 @@ Node<K, T>* search_pre_node(Node<K, T>* node) {
   if (node->parent == nullptr) {
     return nullptr;
   }
-  parent = node->parent;
+
   while (node->parent != nullptr) {
+    parent = node->parent;
     index = 0;
+    // 寻找孩子结点对应的index
     while (static_cast<InternalNode<K, T>*>(parent)->child[index] != node) {
       index++;
     }
-    if (!index) {
-      node = parent;
-    } else {
+
+    if (index) {
+      // 寻找其兄弟结点最右侧的叶子结点
       prenode = static_cast<InternalNode<K, T>*>(parent)->child[index - 1];
       // 一直到叶子结点
       while (!prenode->is_leaf) {
         prenode = static_cast<InternalNode<K, T>*>(prenode)
                       ->child[prenode->keys.size()];
       }
+      return prenode;
     }
+    // 该结点为最左侧孩子结点
+    node = parent;
   }
-  return prenode;
+  return nullptr;
 }
 #endif  // SERIALIZATION_H
