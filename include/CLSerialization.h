@@ -17,18 +17,27 @@ class Serialization {
   template <typename K, typename T>
   off_t serialize(const BPlusTree<K, T>& tree, const char* file);
 
-  // TODO(lzy): 反序列化B+树
   template <typename K, typename T>
   BPlusTree<K, T>* deserialize(const std::string& file);
   template <typename K, typename T>
   BPlusTree<K, T>* deserialize(const char* file);
 
  private:
+  // DFS版本
   template <typename K, typename T>
   void write_node(const int& fd, Node<K, T>* node);
 
   template <typename K, typename T>
   Node<K, T>* read_node(const int& fd, Node<K, T>* parent);
+
+  // BFS版本
+  template <typename K, typename T>
+  void write_node_bfs(const int& fd, Node<K, T>* node);
+
+  template <typename K, typename T>
+  Node<K, T>* read_node_per(const int& fd, Node<K, T>* parent);
+  template <typename K, typename T>
+  Node<K, T>* read_node_bfs(const int& fd);
 };
 
 // 序列化
@@ -57,7 +66,7 @@ off_t Serialization::serialize(const BPlusTree<K, T>& tree, const char* file) {
     throw std::runtime_error("write mincap_ error\n");
   }
   // 写入根结点，进入递归写子结点过程
-  write_node(fd, tree.root_);
+  write_node_bfs(fd, tree.root_);
 
   off_t len = lseek(fd, 0, SEEK_END);
   if (len == -1) {
@@ -70,11 +79,11 @@ off_t Serialization::serialize(const BPlusTree<K, T>& tree, const char* file) {
 }
 
 // 反序列化
-
 template <typename K, typename T>
 BPlusTree<K, T>* Serialization::deserialize(const std::string& file) {
   return this->deserialize<K, T>(file.c_str());
 }
+
 template <typename K, typename T>
 BPlusTree<K, T>* Serialization::deserialize(const char* file) {
   auto* tree = new BPlusTree<K, T>();
@@ -96,7 +105,7 @@ BPlusTree<K, T>* Serialization::deserialize(const char* file) {
   }
 
   // 读入根结点
-  tree->root_ = read_node<K, T>(fd, nullptr);
+  tree->root_ = read_node_bfs<K, T>(fd);
   if (close(fd) == -1) {
     throw std::runtime_error("read close fd error\n");
   }
@@ -196,6 +205,152 @@ Node<K, T>* Serialization::read_node(const int& fd, Node<K, T>* parent) {
         throw std::runtime_error("read data element error\n");
       }
       static_cast<LeafNode<K, T>*>(pnode)->data.push_back(data);
+    }
+  }
+  return pnode;
+}
+
+template <typename K, typename T>
+void Serialization::write_node_bfs(const int& fd, Node<K, T>* node) {
+  std::queue<Node<K, T>*> q;
+  q.push(node);
+  while (!q.empty()) {
+    Node<K, T>* now = q.front();
+    q.pop();
+
+    if (write(fd, &now->is_leaf, sizeof(bool)) == -1) {
+      throw std::runtime_error("write node is_leaf error\n");
+    }
+    int num = now->keys.size();
+    // 写关键字数量
+    if (write(fd, &num, sizeof(int)) == -1) {
+      throw std::runtime_error("write node keys size error\n");
+    }
+    // 写关键字
+    for (int i = 0; i < num; ++i) {
+      if (write(fd, &now->keys[i], sizeof(K)) == -1) {
+        throw std::runtime_error("write node keys element error\n");
+      }
+    }
+
+    if (!now->is_leaf) {
+      for (int i = 0; i < num + 1; ++i) {
+        q.push(static_cast<InternalNode<K, T>*>(now)->child[i]);
+      }
+    } else {
+      // 写值
+      for (int i = 0; i < num; ++i) {
+        if (write(fd, &static_cast<LeafNode<K, T>*>(now)->data[i], sizeof(T)) ==
+            -1) {
+          throw std::runtime_error("write data element error\n");
+        }
+      }
+    }
+  }
+}
+
+template <typename K, typename T>
+Node<K, T>* Serialization::read_node_per(const int& fd, Node<K, T>* parent) {
+  bool is_leaf = false;
+  if (read(fd, &is_leaf, sizeof(bool)) == -1) {
+    throw std::runtime_error("read is_leaf error\n");
+  }
+  // 返回的结点
+  Node<K, T>* pnode = nullptr;
+  if (!is_leaf) {
+    pnode = new InternalNode<K, T>();
+  } else {
+    pnode = new LeafNode<K, T>();
+  }
+  pnode->is_leaf = is_leaf;
+  pnode->parent = parent;
+
+  // 关键字数组大小
+  int num = 0;
+  if (read(fd, &num, sizeof(num)) == -1) {
+    throw std::runtime_error("read keys size error\n");
+  }
+
+  // 读取关键字数组
+  int key = 0;
+  for (int i = 0; i < num; ++i) {
+    if (read(fd, &key, sizeof(K)) == -1) {
+      throw std::runtime_error("read key element error\n");
+    }
+    pnode->keys.push_back(key);
+  }
+  if (pnode->is_leaf) {
+    // 读值
+    int data = 0;
+    for (int i = 0; i < num; ++i) {
+      if (read(fd, &data, sizeof(T)) == -1) {
+        throw std::runtime_error("read data element error\n");
+      }
+      static_cast<LeafNode<K, T>*>(pnode)->data.push_back(data);
+    }
+  }
+  return pnode;
+}
+
+template <typename K, typename T>
+Node<K, T>* Serialization::read_node_bfs(const int& fd) {
+  bool is_leaf = false;
+  if (read(fd, &is_leaf, sizeof(bool)) == -1) {
+    throw std::runtime_error("read is_leaf error\n");
+  }
+  // 返回的结点
+  Node<K, T>* pnode = nullptr;
+  if (!is_leaf) {
+    pnode = new InternalNode<K, T>();
+  } else {
+    pnode = new LeafNode<K, T>();
+  }
+  pnode->is_leaf = is_leaf;
+  pnode->parent = nullptr;
+
+  std::queue<Node<K, T>*> q;
+  q.push(pnode);
+  while (!q.empty()) {
+    Node<K, T>* now = q.front();
+    q.pop();
+    if (now != pnode) {
+      if (read(fd, &now->is_leaf, sizeof(bool)) == -1) {
+        throw std::runtime_error("read is_leaf error\n");
+      }
+    }
+    // 关键字数组大小
+    int num = 0;
+    if (read(fd, &num, sizeof(num)) == -1) {
+      throw std::runtime_error("read keys size error\n");
+    }
+
+    // 读取关键字数组
+    int key = 0;
+    for (int i = 0; i < num; ++i) {
+      if (read(fd, &key, sizeof(K)) == -1) {
+        throw std::runtime_error("read key element error\n");
+      }
+      now->keys.push_back(key);
+    }
+
+    if (!now->is_leaf) {
+      // 读入孩子结点
+      for (int i = 0; i < num + 1; ++i) {
+        static_cast<InternalNode<K, T>*>(pnode)->child.push_back(
+            read_node_per(fd, pnode));
+      }
+      for (int i = 0; i < num + 1; ++i) {
+        q.push(static_cast<InternalNode<K, T>*>(now)->child[i]);
+      }
+    } else {
+      // 构建链表
+      Node<K, T>* prenode = search_pre_node(now);
+      if (prenode) {
+        static_cast<LeafNode<K, T>*>(prenode)->next =
+            static_cast<LeafNode<K, T>*>(now);
+        static_cast<LeafNode<K, T>*>(now)->prev =
+            static_cast<LeafNode<K, T>*>(prenode);
+      }
     }
   }
   return pnode;

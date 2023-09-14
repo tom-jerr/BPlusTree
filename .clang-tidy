@@ -5,6 +5,8 @@
 
 Checks: >
   *,
+  -hicpp-vararg,
+  -cppcoreguidelines-pro-type-vararg,
   -altera-id-dependent-backward-branch,
   -altera-struct-pack-align,
   -altera-unroll-loops,

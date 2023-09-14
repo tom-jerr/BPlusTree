@@ -7,7 +7,7 @@
 #include <tuple>
 #include <vector>
 
-#define MAX_DEGREE 3  // 结点的最大容纳数量+1
+#define MAX_DEGREE 3  // 结点的最大容纳数量+1 (degree 18 is best)
 // 声明Inner Node
 template <typename K, typename T>
 class InternalNode;
