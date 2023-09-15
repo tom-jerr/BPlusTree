@@ -1,0 +1,21 @@
+{
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "files.associations": {
+    "*.mdx": "markdown",
+    "iostream": "cpp",
+    "string": "cpp"
+  },
+  "cmake.generator": "Ninja",
+  // "cmake.configureArgs": [
+  //     "-DCMAKE_INSTALL_PREFIX=..."
+  // ],
+  // "cmake.buildArgs": [
+  //     "-j 4"
+  // ]
+  "cmake.debugConfig": {
+    "args": []
+  },
+  "[cpp]": {
+    "editor.tabSize": 2
+  }
+}

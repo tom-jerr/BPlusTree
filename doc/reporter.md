@@ -69,10 +69,11 @@
 - bin: 生成可执行文件的文件夹
 - doc: 项目相关文档
 - include: 存放项目头文件
-- lib: 存放第三方库
+- third_party: 存放第三方库
 - src: 存放项目源文件
 - test: 存放项目测试文件
 - setup.sh: 项目启动脚本
+- test.sh: 进行单元测试和1千万结点的性能测试
 
 ![目录组织](img/project_structure.png)
 
@@ -148,7 +149,8 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
 }
 ~~~
 
-#### 3.4.3 反序列化寻找前驱叶子结点
+#### 3.4.3 DFS进行反序列化
+##### 3.4.3.1 寻找前驱结点
 ~~~c++
 template <typename K, typename T>
 Node<K, T>* search_pre_node(Node<K, T>* node) {
@@ -188,7 +190,7 @@ Node<K, T>* search_pre_node(Node<K, T>* node) {
 }
 ~~~
 
-#### 3.4.4 反序列化重建链表
+##### 3.4.3.2 反序列化重建链表
 ~~~c++
 if (!is_leaf) {
     for (int i = 0; i < num + 1; ++i) {
@@ -219,20 +221,87 @@ if (!is_leaf) {
     }
   }
 ~~~
+#### 3.4.4 BFS进行反序列化
+~~~c++
+template <typename K, typename T>
+void Serialization::write_node_bfs(const int& fd, Node<K, T>* node) {
+  std::queue<Node<K, T>*> q;
+  q.push(node);
+  while (!q.empty()) {
+    Node<K, T>* now = q.front();
+    q.pop();
+
+    if (write(fd, &now->is_leaf, sizeof(bool)) == -1) {
+      throw std::runtime_error("write node is_leaf error\n");
+    }
+    int num = now->keys.size();
+    // 写关键字数量
+    if (write(fd, &num, sizeof(int)) == -1) {
+      throw std::runtime_error("write node keys size error\n");
+    }
+    // 写关键字
+    for (int i = 0; i < num; ++i) {
+      if (write(fd, &now->keys[i], sizeof(K)) == -1) {
+        throw std::runtime_error("write node keys element error\n");
+      }
+    }
+
+    if (!now->is_leaf) {
+      for (int i = 0; i < num + 1; ++i) {
+        q.push(static_cast<InternalNode<K, T>*>(now)->child[i]);
+      }
+    } else {
+      // 写值
+      for (int i = 0; i < num; ++i) {
+        if (write(fd, &static_cast<LeafNode<K, T>*>(now)->data[i], sizeof(T)) ==
+            -1) {
+          throw std::runtime_error("write data element error\n");
+        }
+      }
+    }
+  }
+}
+~~~
 ### 3.5 程序分析
-#### 3.5.1 测试插入不同数量级的结点
-- 插入测试1：插入结点数100-1000，每次增长100；从1000到10000，每次增长1000；
-- 插入测试2：插入结点从10000到10万，每次增长10000；从10万到1百万，每次增加10万；
-- 插入测试3：插入结点从1百万到7百万，每次增长50万
+#### 3.5.1 测试插入不同度的B+树
+- 从4度到500度，每次增加2
+- 结果显示度为18到20之间，插入的时间最短
 
 测试结果如下图所示
 
-![不同粒度插入测试](img/different_degree_test.png)
+![不同粒度插入测试](img/degree_test.png)
 #### 3.5.2 插入1千万个结点
-- 实现函数中执行时间较长的函数：find_leaf(), insert_inner(), split_leaf(), split_inner(), insert_leaf()
-- 标准库函数[]运行时间较长
+- 实现函数中执行时间较长的函数：find_leaf(), find_first_big_pos(), split_leaf(), insert_leaf()
+- 标准库函数operator[], size(), end()运行时间较长
 
-![插入性能分析](img/perform_insert.png)
+~~~shell
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls   s/call   s/call  name    
+ 32.87      2.24     2.24 1449871046     0.00     0.00  std::vector<int, std::allocator<int> >::operator[](unsigned long)
+ 23.61      3.84     1.61  9999999     0.00     0.00  BPlusTree<int, unsigned long>::find_leaf(int)
+  2.87      4.04     0.20 11099985     0.00     0.00  Node<int, unsigned long>::find_first_big_pos(int)
+  2.35      4.20     0.16 12999992     0.00     0.00  std::vector<unsigned long, std::allocator<unsigned long> >::end()
+  1.62      4.31     0.11 70899824     0.00     0.00  __gnu_cxx::__normal_iterator<int*, std::vector<int, std::allocator<int> > >::__normal_iterator(int* const&)
+  1.54      4.41     0.11 138568042     0.00     0.00  std::vector<int, std::allocator<int> >::size() const
+  1.47      4.51     0.10 16699971     0.00     0.00  __gnu_cxx::__normal_iterator<int*, std::vector<int, std::allocator<int> > >::operator+(long) const
+  1.32      4.60     0.09 11099985     0.00     0.00  std::vector<int, std::allocator<int> >::insert(__gnu_cxx::__normal_iterator<int const*, std::vector<int, std::allocator<int> > >, int const&)
+  1.03      4.67     0.07 10000000     0.00     0.00  LeafNode<int, unsigned long>::insert_leaf(int, unsigned long)
+  1.03      4.74     0.07  9999999     0.00     0.00  std::vector<unsigned long, std::allocator<unsigned long> >::insert(__gnu_cxx::__normal_iterator<unsigned long const*, std::vector<unsigned long, std::allocator<unsigned long> > >, unsigned long const&)
+  0.96      4.81     0.07 66599971     0.00     0.00  __gnu_cxx::__normal_iterator<int const*, std::vector<int, std::allocator<int> > >::base() const
+  0.88      4.87     0.06 56634030     0.00     0.00  std::vector<Node<int, unsigned long>*, std::allocator<Node<int, unsigned long>*> >::operator[](unsigned long)
+  0.74      4.92     0.05 62999994     0.00     0.00  __gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, std::allocator<unsigned long> > >::__normal_iterator(unsigned long* const&)
+  0.74      4.97     0.05  5100008     0.00     0.00  unsigned long const& std::min<unsigned long>(unsigned long const&, unsigned long const&)
+  0.59      5.01     0.04 53799820     0.00     0.00  __gnu_cxx::__normal_iterator<int*, std::vector<int, std::allocator<int> > >::base() const
+  0.59      5.05     0.04 46999999     0.00     0.00  __gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, std::allocator<unsigned long> > >::base() const
+  0.59      5.09     0.04 28199968     0.00     0.00  std::vector<int, std::allocator<int> >::begin()
+  0.59      5.13     0.04 25000004     0.00     0.00  std::vector<unsigned long, std::allocator<unsigned long> >::begin()
+  0.59      5.17     0.04 14999999     0.00     0.00  __gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, std::allocator<unsigned long> > >::operator+(long) const
+  0.59      5.21     0.04 13299969     0.00     0.00  _ZN9__gnu_cxx17__normal_iteratorIPKiSt6vectorIiSaIiEEEC2IPiEERKNS0_IT_NS_11__enable_ifIXsr3std10__are_sameIS9_S8_EE7__valueES5_E6__typeEEE
+  0.59      5.25     0.04 12099922     0.00     0.00  void __gnu_cxx::new_allocator<int>::construct<int, int const&>(int*, int const&)
+  0.59      5.29     0.04 10000000     0.00     0.00  BPlusTree<int, unsigned long>::tree_insert(int, unsigned long)
+  0.59      5.33     0.04   999999     0.00     0.00  LeafNode<int, unsigned long>::split_leaf()
+~~~
 #### 3.5.3 valgrind测试
 没有内存泄漏
 
@@ -422,11 +491,21 @@ delete 4
 []
 ~~~
 ### 4.2 性能测试
-- 插入1千万个结点：37s左右
-- 查询1千万个结点：4s左右
-- 删除1千万个结点：22s左右
+#### 4.2.1 与RB Tree比较
+- 分别对度为16, 18, 20的B+树和红黑树插入1千万个结点
 
-![性能测试](img/perform_time_cost.png)
+![compare_test](img/compare_test.png)
+
+#### 4.2.2 对18度和20度B+树测试
+~~~shell
+18 B+ tree insert time cost:    7997ms
+search time cost:       2813ms
+delete time cost:       10ms
+
+20 B+ tree insert time cost:    8111ms
+search time cost:       2909ms
+delete time cost:       9ms
+~~~
 ## 5 总结
 - 插入操作
   - 最开始寻找插入位置, 寻找key在关键字数组中的索引都使用的for循环线性查找; 现在改为二分查找
@@ -438,11 +517,13 @@ delete 4
   - 合并内部结点, 最开始直接将兄弟结点的关键字直接插入, 发现树的变化有问题; 发现需要考虑该结点的父结点的关键字
 - 序列化反序列化
 
-   > 最开始忘记叶子结点链表的构建, 反序列化后的B+树删除有问题
-  - 反序列化叶子结点链表的构建
+   > DFS反序列化最开始忘记叶子结点链表的构建, 反序列化后的B+树删除有问题
+  - DFS反序列化叶子结点链表的构建
     - 需要找到叶子结点的前驱结点
     - 在内部结点处理逻辑中进行叶子结点链表的恢复
-  - 使用open函数, clang-tidy 提示`Do not call c-style vararg functions`, 暂时未解决
+  - 增加BFS序列化和反序列结点函数
+  - 使用open函数, clang-tidy 提示`Do not call c-style vararg functions`, 在clang-tidy中排除检查即可
+
 
 
 

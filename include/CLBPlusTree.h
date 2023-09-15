@@ -2,6 +2,7 @@
 #define BPLUSTREE_H
 #include <sys/types.h>
 
+#include <cstdint>
 #include <iostream>
 #include <queue>
 #include <tuple>
@@ -83,6 +84,7 @@ class BPlusTree {
 
  public:
   BPlusTree();
+  BPlusTree(int degree);
   ~BPlusTree();
 
   // 查找、插入和删除函数
@@ -182,24 +184,16 @@ BPlusTree<K, T>::BPlusTree()
 }
 
 template <typename K, typename T>
+BPlusTree<K, T>::BPlusTree(int degree)
+    : root_(nullptr), maxcap_(degree - 1), mincap_(maxcap_ / 2) {
+  if (!root_) {
+    root_ = new LeafNode<K, T>();
+  }
+}
+
+template <typename K, typename T>
 BPlusTree<K, T>::~BPlusTree() {
   this->clear();
-  // std::queue<Node<K, T>*> q;
-  // q.push(root_);
-  // while (!q.empty()) {
-  //   Node<K, T>* tmp = q.front();
-  //   q.pop();
-
-  //   if (!tmp->is_leaf) {
-  //     for (int i = 0; i < static_cast<InternalNode<K,
-  //     T>*>(tmp)->child.size();
-  //          ++i) {
-  //       q.push(static_cast<InternalNode<K, T>*>(tmp)->child[i]);
-  //     }
-  //   }
-  //   delete tmp;
-  // }
-  // this->root_ = nullptr;
 };
 
 template <typename K, typename T>
@@ -368,7 +362,8 @@ T BPlusTree<K, T>::search(K key) {
   int index = leaf->key_index(key);
   if (index == -1) {
     std::cout << "key " << key << " not found" << std::endl;
-    return NULL;
+    // 没找到返回最大值
+    return INT64_MAX;
   }
   return static_cast<LeafNode<K, T>*>(leaf)->data[index];
 }
