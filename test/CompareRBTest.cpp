@@ -10,9 +10,9 @@
 #include "../include/CLBPlusTree.h"
 
 #define TENMILLION 10000000
-#define TEST_DEGREE20 20
-#define TEST_DEGREE16 16
-#define TEST_DEGREE18 18
+#define TEST_DEGREE20 200
+#define TEST_DEGREE16 160
+#define TEST_DEGREE18 180
 #define TEST_ROUND 10
 
 void rb_tree_test() {
@@ -28,10 +28,15 @@ void rb_tree_test() {
                         .count();
   uint64_t cost_rb = end_rb - begin_rb;
   std::cout << "RB Tree insert time cost:\t" << cost_rb << "ms" << '\n';
-  // std::fstream f;
-  // f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
-  // f << " RB Tree insert time cost:\t" << cost_rb << "ms" << '\n';
-  // f.close();
+  std::fstream f;
+  f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
+  f << " RB Tree insert time cost:\t" << cost_rb << "ms" << '\n';
+  f.close();
+
+  std::fstream data;
+  data.open("../doc/analysis/rb_test_data.txt", std::ios::out | std::ios::app);
+  data << cost_rb << ',';
+  data.close();
   rbtree.clear();
 }
 
@@ -50,10 +55,37 @@ void b_plus_tree_test(int degree) {
   uint64_t cost = end - begin;
   std::cout << "B+ Tree degree " << degree << " insert time cost:\t" << cost
             << "ms" << '\n';
-  // std::fstream f;
-  // f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
-  // f << degree << " degree B+ Tree insert time cost:\t" << cost << "ms" <<
-  // '\n'; f.close();
+  std::fstream f;
+  f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
+  f << degree << " degree B+ Tree insert time cost:\t" << cost << "ms" << '\n';
+  f.close();
+
+  std::fstream data;
+  std::fstream data1;
+  std::fstream data2;
+  switch (degree) {
+    case TEST_DEGREE16:
+      data.open("../doc/analysis/bplustree_test_data16.txt",
+                std::ios::out | std::ios::app);
+      data << cost << ',';
+      data.close();
+      break;
+    case TEST_DEGREE18:
+      data1.open("../doc/analysis/bplustree_test_data18.txt",
+                 std::ios::out | std::ios::app);
+      data1 << cost << ',';
+      data1.close();
+      break;
+    case TEST_DEGREE20:
+      data2.open("../doc/analysis/bplustree_test_data20.txt",
+                 std::ios::out | std::ios::app);
+      data2 << cost << ',';
+      data2.close();
+      break;
+    default:
+      break;
+  };
+
   delete tree20;
 }
 

@@ -5,6 +5,8 @@
 
 Checks: >
   *,
+  -performance-enum-size,
+  -llvmlibc-inline-function-decl,
   -hicpp-vararg,
   -cppcoreguidelines-pro-type-vararg,
   -altera-id-dependent-backward-branch,

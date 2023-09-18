@@ -37,12 +37,17 @@ void insert_tenmillion(int degree) {
 }
 
 void degree_test() {
-  for (int i = 4; i <= TEST_DEGREE; i += 2) {
+  for (int i = 3; i <= TEST_DEGREE; i++) {
     insert_tenmillion(i);
   }
 }
 
 int main(int /*argc*/, char** /*argv*/) {
   degree_test();
+  // auto* tree = new BPlusTree<int, uint64_t>(5);
+  // for (int i = 1; i <= 13; ++i) {
+  //   tree->tree_insert(i, i);
+  // }
+  // tree->show_bplustree();
   return 0;
 }

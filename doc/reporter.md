@@ -267,11 +267,16 @@ void Serialization::write_node_bfs(const int& fd, Node<K, T>* node) {
 - 从4度到500度，每次增加2
 - 结果显示度为18到20之间，插入的时间最短
 
+
 测试结果如下图所示
+- 将寻找叶子结点线性查找
 
 ![不同粒度插入测试](img/degree_test.png)
+
+- 寻找叶子结点二分查找
+![不同粒度插入测试2](img/new_degree_test.png)
 #### 3.5.2 插入1千万个结点
-- 实现函数中执行时间较长的函数：find_leaf(), find_first_big_pos(), split_leaf(), insert_leaf()
+- 实现函数中执行时间较长的函数：find_leaf() (因为线性查找), find_first_big_pos(), split_leaf(), insert_leaf()
 - 标准库函数operator[], size(), end()运行时间较长
 
 ~~~shell
@@ -301,6 +306,32 @@ Each sample counts as 0.01 seconds.
   0.59      5.25     0.04 12099922     0.00     0.00  void __gnu_cxx::new_allocator<int>::construct<int, int const&>(int*, int const&)
   0.59      5.29     0.04 10000000     0.00     0.00  BPlusTree<int, unsigned long>::tree_insert(int, unsigned long)
   0.59      5.33     0.04   999999     0.00     0.00  LeafNode<int, unsigned long>::split_leaf()
+~~~
+- 改为二分查找后；二分查找函数执行时间最长
+~~~shell
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls   s/call   s/call  name    
+ 26.58      1.40     1.40 59488177     0.00     0.00  Node<int, unsigned long>::find_first_big_pos(int)
+ 15.24      2.20     0.80 525546745     0.00     0.00  std::vector<int, std::allocator<int> >::operator[](unsigned long)
+  5.24      2.47     0.28 19999998     0.00     0.00  BPlusTree<int, unsigned long>::find_leaf(int)
+  4.00      2.68     0.21 19999998     0.00     0.00  std::vector<unsigned long, std::allocator<unsigned long> >::insert(__gnu_cxx::__normal_iterator<unsigned long const*, std::vector<unsigned long, std::allocator<unsigned long> > >, unsigned long const&)
+  3.24      2.85     0.17 101270671     0.00     0.00  __gnu_cxx::__normal_iterator<int*, std::vector<int, std::allocator<int> > >::__normal_iterator(int* const&)
+  2.95      3.01     0.16 20000000     0.00     0.00  LeafNode<int, unsigned long>::insert_leaf(int, unsigned long)
+  2.86      3.16     0.15 119057281     0.00     0.00  std::vector<int, std::allocator<int> >::size() const
+  2.76      3.30     0.15 80070335     0.00     0.00  __gnu_cxx::__normal_iterator<int const*, std::vector<int, std::allocator<int> > >::__normal_iterator(int const* const&)
+  2.10      3.41     0.11 20422029     0.00     0.00  __gnu_cxx::__normal_iterator<int*, std::vector<int, std::allocator<int> > >::operator+(long) const
+  2.10      3.52     0.11 20070277     0.00     0.00  std::vector<int, std::allocator<int> >::insert(__gnu_cxx::__normal_iterator<int const*, std::vector<int, std::allocator<int> > >, int const&)
+  2.10      3.63     0.11 40280027     0.00     0.00  int const& std::forward<int const&>(std::remove_reference<int const&>::type&)
+  1.71      3.72     0.09 120421738     0.00     0.00  __gnu_cxx::__normal_iterator<int const*, std::vector<int, std::allocator<int> > >::base() const
+  1.71      3.81     0.09 100910006     0.00     0.00  __gnu_cxx::__normal_iterator<unsigned long*, std::vector<unsigned long, std::allocator<unsigned long> > >::__normal_iterator(unsigned long* const&)
+  1.71      3.90     0.09 20209975     0.00     0.00  std::vector<unsigned long, std::allocator<unsigned long> >::end()
+  1.62      3.99     0.09 40000000     0.00     0.00  bool __gnu_cxx::operator==<int const*, std::vector<int, std::allocator<int> > >(__gnu_cxx::__normal_iterator<int const*, std::vector<int, std::allocator<int> > > const&, __gnu_cxx::__normal_iterator<int const*, std::vector<int, std::allocator<int> > > const&)
+  1.52      4.07     0.08 20138683     0.00     0.00  void std::allocator_traits<std::allocator<int> >::construct<int, int const&>(std::allocator<int>&, int*, int const&)
+  1.52      4.15     0.08 20000000     0.00     0.00  BPlusTree<int, unsigned long>::tree_insert(int, unsigned long)
+  1.43      4.22     0.08 40000000     0.00     0.00  std::vector<int, std::allocator<int> >::end() const
+  1.33      4.29     0.07 40494682     0.00     0.00  std::vector<int, std::allocator<int> >::begin()
+  1.14      4.35     0.06 40350026     0.00     0.00  std::vector<unsigned long, std::allocator<unsigned long> >::begin()
 ~~~
 #### 3.5.3 valgrind测试
 没有内存泄漏
@@ -496,14 +527,20 @@ delete 4
 
 ![compare_test](img/compare_test.png)
 
-#### 4.2.2 对18度和20度B+树测试
+#### 4.2.2 对18度和20度，400和404度B+树测试
 ~~~shell
-18 B+ tree insert time cost:    7997ms
-search time cost:       2813ms
+18 B+ tree insert time cost:    5801ms
+search time cost:       3013ms
 delete time cost:       10ms
+20 B+ tree insert time cost:    5622ms
+search time cost:       3020ms
+delete time cost:       11ms
 
-20 B+ tree insert time cost:    8111ms
-search time cost:       2909ms
+400 B+ tree insert time cost:   3557ms
+search time cost:       2816ms
+delete time cost:       8ms
+404 B+ tree insert time cost:   3552ms
+search time cost:       2816ms
 delete time cost:       9ms
 ~~~
 ## 5 总结

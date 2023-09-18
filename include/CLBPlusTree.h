@@ -8,7 +8,9 @@
 #include <tuple>
 #include <vector>
 
-#define MAX_DEGREE 3  // 结点的最大容纳数量+1 (degree 18 is best)
+#define MAX_DEGREE 3  // 结点的最大容纳数量+1 (degree 20 is best)
+// 定义操作类型
+enum class Operation { read, insert, remove };
 // 声明Inner Node
 template <typename K, typename T>
 class InternalNode;
@@ -22,7 +24,7 @@ class Node {
   bool is_leaf;         // 判断是否为叶子节点
 
   Node();
-  virtual ~Node();
+  virtual ~Node() = default;
 
   // find_last_pos: 寻找不小于key的最小的pos
   int find_last_pos(K key);
@@ -43,7 +45,7 @@ class LeafNode : public Node<K, T> {
   // 构造和析构函数
   LeafNode(LeafNode<K, T>* prev_node = nullptr,
            LeafNode<K, T>* next_node = nullptr);
-  ~LeafNode();
+  ~LeafNode() = default;
 
   // 插入叶子节点&超过阈值后分裂节点
   bool insert_leaf(K key, T value);
@@ -59,7 +61,7 @@ class InternalNode : public Node<K, T> {
   std::vector<Node<K, T>*> child;  // 指向孩子节点(inner node or leaf node)
 
   InternalNode();
-  ~InternalNode();
+  ~InternalNode() = default;
   int child_index(K key);
 
   bool insert_inner(std::vector<Node<K, T>*> p_node, K key);
@@ -103,7 +105,10 @@ class BPlusTree {
   void show_bplustree();
   // 层次遍历整个B+Tree
   std::vector<K> bfs();
+  // 判断结点是否为安全结点
+  bool is_safe_node(Node<K, T>* node, Operation op);
 
+ private:
   // 删除辅助函数
   // 对叶子结点的操作
   void borrow_right_leaf(Node<K, T>* node, Node<K, T>* next);
@@ -120,9 +125,6 @@ class BPlusTree {
 template <typename K, typename T>
 Node<K, T>::Node() : parent(nullptr) {}
 
-template <typename K, typename T>
-Node<K, T>::~Node() = default;
-
 // Leaf Node
 template <typename K, typename T>
 LeafNode<K, T>::LeafNode(LeafNode<K, T>* prev_node, LeafNode<K, T>* next_node)
@@ -137,19 +139,6 @@ LeafNode<K, T>::LeafNode(LeafNode<K, T>* prev_node, LeafNode<K, T>* next_node)
   }
 }
 
-template <typename K, typename T>
-LeafNode<K, T>::~LeafNode() = default;
-// {
-//   if (this->prev) {
-//     delete prev;
-//   }
-//   if (this->prev) {
-//     delete next;
-//   }
-//   prev = nullptr;
-//   next = nullptr;
-// }
-
 // Inner Node
 template <typename K, typename T>
 InternalNode<K, T>::InternalNode() : Node<K, T>() {
@@ -157,17 +146,9 @@ InternalNode<K, T>::InternalNode() : Node<K, T>() {
 }
 
 // Inner Node
-template <typename K, typename T>
-InternalNode<K, T>::~InternalNode() = default;
 
 template <typename K, typename T>
 int InternalNode<K, T>::child_index(K key) {
-  // for (int i = 0; i < this->keys.size(); i++) {
-  //   if (key < this->keys[i]) {
-  //     return i;
-  //   }
-  // }
-  // return this->keys.size();
   int index = this->find_first_big_pos(key);
   if (key >= this->keys[index]) {
     return this->keys.size();
@@ -215,6 +196,28 @@ void BPlusTree<K, T>::clear() {
   this->root_ = nullptr;
 }
 // 帮助函数
+template <typename K, typename T>
+bool BPlusTree<K, T>::is_safe_node(Node<K, T>* node, Operation op) {
+  // 所有结点读操作均安全
+  if (op == Operation::read) {
+    return true;
+  }
+  // 插入时结点小于最大值即可
+  if (op == Operation::insert) {
+    return node->keys.size() < this->maxcap_;
+  }
+  // 删除结点时，考虑是否为根结点
+  if (op == Operation::remove) {
+    if (node == this->root_) {
+      if (node->is_leaf) {
+        return node->keys.size() > 1;
+      }
+      return node->keys.size() > 2;
+    }
+    return node->keys.size() > this->mincap_;
+  }
+  return false;
+}
 
 // 返回根节点
 template <typename K, typename T>
@@ -234,24 +237,16 @@ Node<K, T>* BPlusTree<K, T>::find_leaf(int key) {
   }
   Node<K, T>* p_node = this->root_;
   while (!p_node->is_leaf) {
-    int flag = 0;
-    int size = p_node->keys.size();
-    for (int i = 0; i < size; ++i) {
-      if (p_node->keys[i] > key) {
-        p_node = static_cast<InternalNode<K, T>*>(p_node)->child[i];
-        flag = 1;
-        break;
+    int index = p_node->find_first_big_pos(key);
+    if (index >= 0) {
+      if (p_node->keys[index] == key) {
+        p_node = static_cast<InternalNode<K, T>*>(p_node)->child[index + 1];
+      } else if (p_node->keys[index] < key) {
+        p_node = static_cast<InternalNode<K, T>*>(p_node)
+                     ->child[p_node->keys.size()];
+      } else {
+        p_node = static_cast<InternalNode<K, T>*>(p_node)->child[index];
       }
-      if (p_node->keys[i] == key) {
-        p_node = static_cast<InternalNode<K, T>*>(p_node)->child[i + 1];
-        flag = 1;
-        break;
-      }
-    }
-    // 没找到，直接指向最右侧的孩子节点
-    if (!flag) {
-      p_node =
-          static_cast<InternalNode<K, T>*>(p_node)->child[p_node->keys.size()];
     }
   }
   return p_node;
@@ -658,8 +653,8 @@ void BPlusTree<K, T>::borrow_right_inner(int pos, Node<K, T>* node,
 }
 
 // 插入node节点的父节点的key，父节点得到prev的最后一个key
-// node.parent.key = prev.keys.back() 使得满足prev.key < node.parent.key, after
-// node.key >= node.parent.key
+// node.parent.key = prev.keys.back() 使得满足prev.key < node.parent.key,
+// after node.key >= node.parent.key
 template <typename K, typename T>
 void BPlusTree<K, T>::borrow_left_inner(int pos, Node<K, T>* node,
                                         Node<K, T>* prev) {
