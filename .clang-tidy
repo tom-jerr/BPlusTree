@@ -5,6 +5,7 @@
 
 Checks: >
   *,
+  -cppcoreguidelines-narrowing-conversions,
   -performance-enum-size,
   -llvmlibc-inline-function-decl,
   -hicpp-vararg,
