@@ -14,6 +14,7 @@
 #define MAX_DEGREE 3  // 结点的最大容纳数量+1 (degree 20 is best)
 // 定义操作类型
 enum class Operation { read, insert, remove };
+
 // 声明Inner Node
 template <typename K, typename T>
 class InternalNode;
@@ -81,7 +82,9 @@ class InternalNode : public Node<K, T> {
 template <typename K, typename T>
 class BPlusTree {
   friend class Serialization;
-  friend Node<K, T>* search_pre_node(Node<K, T>* node);
+  template <typename K1, typename T1>
+  friend Node<K1, T1>* search_pre_node(Node<K1, T1>* node);
+  using VecSize = typename std::vector<Node<K, T>*>::size_type;
 
  private:
   Node<K, T>* root_;
@@ -210,8 +213,8 @@ void BPlusTree<K, T>::clear() {
     q.pop();
 
     if (!tmp->is_leaf) {
-      for (int i = 0; i < static_cast<InternalNode<K, T>*>(tmp)->child.size();
-           ++i) {
+      for (VecSize i = 0;
+           i < static_cast<InternalNode<K, T>*>(tmp)->child.size(); ++i) {
         q.push(static_cast<InternalNode<K, T>*>(tmp)->child[i]);
       }
     }
@@ -230,7 +233,7 @@ bool BPlusTree<K, T>::is_safe_node(Node<K, T>* node, Operation op) {
   }
   // 插入时结点小于最大值即可
   if (op == Operation::insert) {
-    return node->keys.size() < this->maxcap_;
+    return node->keys.size() < static_cast<VecSize>(this->maxcap_);
   }
   // 删除结点时，考虑是否为根结点
   if (op == Operation::remove) {
@@ -240,7 +243,7 @@ bool BPlusTree<K, T>::is_safe_node(Node<K, T>* node, Operation op) {
       }
       return node->keys.size() > 2;
     }
-    return node->keys.size() > this->mincap_;
+    return node->keys.size() > static_cast<VecSize>(this->mincap_);
   }
   return false;
 }
@@ -402,9 +405,9 @@ void BPlusTree<K, T>::show_bplustree() {
   q.push_back(root_);
   while (!q.empty()) {
     uint64_t size = q.size();
-    for (int i = 0; i < size; ++i) {
+    for (uint64_t i = 0; i < size; ++i) {
       if (!q[i]->is_leaf) {
-        for (int j = 0;
+        for (VecSize j = 0;
              j < (static_cast<InternalNode<K, T>*>(q[i]))->child.size(); ++j) {
           q.push_back(static_cast<InternalNode<K, T>*>(q[i])->child[j]);
         }
@@ -435,8 +438,8 @@ std::vector<K> BPlusTree<K, T>::bfs() {
       bpt_keys.push_back(tmp->keys[i]);
     }
     if (!tmp->is_leaf) {
-      for (int i = 0; i < static_cast<InternalNode<K, T>*>(tmp)->child.size();
-           ++i) {
+      for (VecSize i = 0;
+           i < static_cast<InternalNode<K, T>*>(tmp)->child.size(); ++i) {
         q.push(static_cast<InternalNode<K, T>*>(tmp)->child[i]);
       }
     }
@@ -709,7 +712,7 @@ void BPlusTree<K, T>::insert_in_parent(
     std::cout << "failed to insert inner"
               << "\n";
   }
-  if (parent->keys.size() > this->maxcap_) {
+  if (parent->keys.size() > static_cast<VecSize>(this->maxcap_)) {
     std::tuple<Node<K, T>*, Node<K, T>*, K> new_inner =
         static_cast<InternalNode<K, T>*>(parent)->split_inner();
     insert_in_parent(new_inner);
@@ -816,7 +819,7 @@ void BPlusTree<K, T>::tree_insert_latch(K key, T data,
     std::cout << "failed to insert leaf"
               << "\n";
   }
-  if (p_node->keys.size() > this->maxcap_) {
+  if (p_node->keys.size() > static_cast<VecSize>(this->maxcap_)) {
     // 新建结点的父结点已经锁住，同时还未插入到父结点，无法访问到
     std::tuple<Node<K, T>*, Node<K, T>*, K> new_node =
         static_cast<LeafNode<K, T>*>(p_node)->split_leaf();
@@ -889,7 +892,7 @@ void BPlusTree<K, T>::borrow_right_leaf(Node<K, T>* node, Node<K, T>* next) {
   static_cast<LeafNode<K, T>*>(next)->data.erase(
       static_cast<LeafNode<K, T>*>(next)->data.begin());
 
-  for (int i = 0;
+  for (VecSize i = 0;
        i < static_cast<InternalNode<K, T>*>(node->parent)->child.size(); ++i) {
     if (static_cast<InternalNode<K, T>*>(node->parent)->child[i] == next) {
       node->parent->keys[i - 1] = next->keys.front();
@@ -909,7 +912,7 @@ void BPlusTree<K, T>::borrow_left_leaf(Node<K, T>* node, Node<K, T>* prev) {
   static_cast<LeafNode<K, T>*>(prev)->data.erase(
       static_cast<LeafNode<K, T>*>(prev)->data.begin());
 
-  for (int i = 0;
+  for (VecSize i = 0;
        i < static_cast<InternalNode<K, T>*>(node->parent)->child.size(); ++i) {
     if (static_cast<InternalNode<K, T>*>(node->parent)->child[i] == node) {
       node->parent->keys[i - 1] = node->keys.front();
@@ -978,7 +981,7 @@ void BPlusTree<K, T>::merge_right_leaf(Node<K, T>* node, Node<K, T>* next) {
   // static_cast<LeafNode<K, T>*>(node)->prev = nullptr;
 
   // 处理next父节点中需要删除的key和child
-  for (int i = 0;
+  for (VecSize i = 0;
        i < static_cast<InternalNode<K, T>*>(next->parent)->child.size(); ++i) {
     if (static_cast<InternalNode<K, T>*>(next->parent)->child[i] == next) {
       next->parent->keys.erase(next->parent->keys.begin() + i - 1);
@@ -1010,7 +1013,7 @@ void BPlusTree<K, T>::merge_left_leaf(Node<K, T>* node, Node<K, T>* prev) {
   }
 
   // 处理node父节点中需要删除的key和child
-  for (int i = 0;
+  for (VecSize i = 0;
        i < static_cast<InternalNode<K, T>*>(node->parent)->child.size(); ++i) {
     if (static_cast<InternalNode<K, T>*>(node->parent)->child[i] == node) {
       node->parent->keys.erase(node->parent->keys.begin() + i - 1);
@@ -1100,7 +1103,7 @@ void BPlusTree<K, T>::tree_delete_nolatch(K key, Node<K, T>* node) {
   }
 
   // 如果此时的Key大小小于m/2，进行节点的借出和合并
-  if (node->keys.size() < this->mincap_) {
+  if (node->keys.size() < static_cast<VecSize>(this->mincap_)) {
     // 唯一出口点，当node是root时结束；否则继续进行删除直到进行到根节点
     if (node == this->root_) {
       if (this->root_->keys.empty() &&
@@ -1119,25 +1122,25 @@ void BPlusTree<K, T>::tree_delete_nolatch(K key, Node<K, T>* node) {
       Node<K, T>* prev = static_cast<LeafNode<K, T>*>(node)->prev;
       // 如果此时节点>=mincap_，可以借出一个节点
       if (next && next->parent == node->parent &&
-          next->keys.size() > this->mincap_) {
+          next->keys.size() > static_cast<VecSize>(this->mincap_)) {
         this->borrow_right_leaf(node, next);
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() > this->mincap_) {
+                 prev->keys.size() > static_cast<VecSize>(this->mincap_)) {
         this->borrow_left_leaf(node, prev);
       }
       // 如果此时节点<=mincap_，只能进行两个节点的合并
       else if (next && next->parent == node->parent &&
-               next->keys.size() <= this->mincap_) {
+               next->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         this->merge_right_leaf(node, next);
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() <= this->mincap_) {
+                 prev->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         this->merge_left_leaf(node, prev);
       }
     }
 
     else {
       int pos = -1;
-      for (int i = 0;
+      for (VecSize i = 0;
            i < static_cast<InternalNode<K, T>*>(node->parent)->child.size();
            ++i) {
         if (static_cast<InternalNode<K, T>*>(node->parent)->child[i] == node) {
@@ -1151,7 +1154,7 @@ void BPlusTree<K, T>::tree_delete_nolatch(K key, Node<K, T>* node) {
       Node<K, T>* prev = nullptr;
 
       if (static_cast<InternalNode<K, T>*>(node->parent)->child.size() >
-          pos + 1) {
+          static_cast<VecSize>(pos + 1)) {
         next = static_cast<InternalNode<K, T>*>(node->parent)->child[pos + 1];
       }
 
@@ -1160,24 +1163,24 @@ void BPlusTree<K, T>::tree_delete_nolatch(K key, Node<K, T>* node) {
       }
 
       if (next && next->parent == node->parent &&
-          next->keys.size() > this->mincap_) {
+          next->keys.size() > static_cast<VecSize>(this->mincap_)) {
         this->borrow_right_inner(pos, node, next);
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() > this->mincap_) {
+                 prev->keys.size() > static_cast<VecSize>(this->mincap_)) {
         this->borrow_left_inner(pos, node, prev);
       } else if (next && next->parent == node->parent &&
-                 next->keys.size() <= this->mincap_) {
+                 next->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         this->merge_right_inner(pos, node, next);
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() <= this->mincap_) {
+                 prev->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         this->merge_left_inner(pos, node, prev);
       }
     }
   }
   Node<K, T>* parent = node->parent;
-  if (node->keys.empty()) {
-    delete node;
-  }
+  // if (node->keys.empty()) {
+  //   delete node;
+  // }
   // 继续向上进行删除直到node为根节点
   if (parent) {
     this->tree_delete_nolatch(key, parent);
@@ -1234,24 +1237,24 @@ void BPlusTree<K, T>::tree_delete_latch(K key, Node<K, T>* node,
       // 如果此时节点>=mincap_，可以借出一个节点
       // 此时拥有node以及祖先的锁
       if (next && next->parent == node->parent &&
-          next->keys.size() > this->mincap_) {
+          next->keys.size() > static_cast<VecSize>(this->mincap_)) {
         next->latch.w_lock();
         this->borrow_right_leaf(node, next);
         next->latch.w_unlock();
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() > this->mincap_) {
+                 prev->keys.size() > static_cast<VecSize>(this->mincap_)) {
         prev->latch.w_lock();
         this->borrow_left_leaf(node, prev);
         prev->latch.w_unlock();
       }
       // 如果此时节点<=mincap_，只能进行两个节点的合并
       else if (next && next->parent == node->parent &&
-               next->keys.size() <= this->mincap_) {
+               next->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         next->latch.w_lock();
         this->merge_right_leaf(node, next);
         next->latch.w_unlock();
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() <= this->mincap_) {
+                 prev->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         prev->latch.w_lock();
         this->merge_left_leaf(node, prev);
         prev->latch.w_unlock();
@@ -1260,7 +1263,7 @@ void BPlusTree<K, T>::tree_delete_latch(K key, Node<K, T>* node,
 
     else {
       int pos = -1;
-      for (int i = 0;
+      for (VecSize i = 0;
            i < static_cast<InternalNode<K, T>*>(node->parent)->child.size();
            ++i) {
         if (static_cast<InternalNode<K, T>*>(node->parent)->child[i] == node) {
@@ -1274,7 +1277,7 @@ void BPlusTree<K, T>::tree_delete_latch(K key, Node<K, T>* node,
       Node<K, T>* prev = nullptr;
 
       if (static_cast<InternalNode<K, T>*>(node->parent)->child.size() >
-          pos + 1) {
+          static_cast<VecSize>(pos + 1)) {
         next = static_cast<InternalNode<K, T>*>(node->parent)->child[pos + 1];
       }
 
@@ -1283,22 +1286,22 @@ void BPlusTree<K, T>::tree_delete_latch(K key, Node<K, T>* node,
       }
 
       if (next && next->parent == node->parent &&
-          next->keys.size() > this->mincap_) {
+          next->keys.size() > static_cast<VecSize>(this->mincap_)) {
         next->latch.w_lock();
         this->borrow_right_inner(pos, node, next);
         next->latch.w_unlock();
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() > this->mincap_) {
+                 prev->keys.size() > static_cast<VecSize>(this->mincap_)) {
         prev->latch.w_lock();
         this->borrow_left_inner(pos, node, prev);
         prev->latch.w_unlock();
       } else if (next && next->parent == node->parent &&
-                 next->keys.size() <= this->mincap_) {
+                 next->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         next->latch.w_lock();
         this->merge_right_inner(pos, node, next);
         next->latch.w_unlock();
       } else if (prev && prev->parent == node->parent &&
-                 prev->keys.size() <= this->mincap_) {
+                 prev->keys.size() <= static_cast<VecSize>(this->mincap_)) {
         prev->latch.w_lock();
         this->merge_left_inner(pos, node, prev);
         prev->latch.w_unlock();

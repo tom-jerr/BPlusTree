@@ -4,8 +4,8 @@
 
 #include "../include/CLBPlusTree.h"
 
-#define DGREE_18 400
-#define DGREE_20 404
+#define DGREE_18 493
+#define DGREE_20 400
 #define TENMILLION 10000000
 
 void TENMILLIONTEST(int degree) {

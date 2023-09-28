@@ -249,6 +249,7 @@ void Serialization::write_node_bfs(const int& fd, Node<K, T>* node) {
   }
 }
 
+// 读取每个结点的值
 template <typename K, typename T>
 Node<K, T>* Serialization::read_node_per(const int& fd, Node<K, T>* parent) {
   bool is_leaf = false;
@@ -292,6 +293,7 @@ Node<K, T>* Serialization::read_node_per(const int& fd, Node<K, T>* parent) {
   return pnode;
 }
 
+// BFS恢复结点
 template <typename K, typename T>
 Node<K, T>* Serialization::read_node_bfs(const int& fd) {
   bool is_leaf = false;

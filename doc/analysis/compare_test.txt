@@ -1,60 +1,60 @@
 round 1
- RB Tree insert time cost:	8037ms
-16 degree B+ Tree insert time cost:	5719ms
-18 degree B+ Tree insert time cost:	5503ms
-20 degree B+ Tree insert time cost:	5367ms
+ RB Tree insert time cost:	8406ms
+404 degree B+ Tree insert time cost:	8778ms
+398 degree B+ Tree insert time cost:	8373ms
+400 degree B+ Tree insert time cost:	8190ms
 
 round 2
- RB Tree insert time cost:	7377ms
-16 degree B+ Tree insert time cost:	5662ms
-18 degree B+ Tree insert time cost:	5642ms
-20 degree B+ Tree insert time cost:	6565ms
+ RB Tree insert time cost:	7530ms
+404 degree B+ Tree insert time cost:	8299ms
+398 degree B+ Tree insert time cost:	8259ms
+400 degree B+ Tree insert time cost:	8236ms
 
 round 3
- RB Tree insert time cost:	8032ms
-16 degree B+ Tree insert time cost:	6045ms
-18 degree B+ Tree insert time cost:	5567ms
-20 degree B+ Tree insert time cost:	5566ms
+ RB Tree insert time cost:	7561ms
+404 degree B+ Tree insert time cost:	8307ms
+398 degree B+ Tree insert time cost:	8269ms
+400 degree B+ Tree insert time cost:	8369ms
 
 round 4
- RB Tree insert time cost:	7559ms
-16 degree B+ Tree insert time cost:	5810ms
-18 degree B+ Tree insert time cost:	6699ms
-20 degree B+ Tree insert time cost:	6976ms
+ RB Tree insert time cost:	7626ms
+404 degree B+ Tree insert time cost:	8388ms
+398 degree B+ Tree insert time cost:	8217ms
+400 degree B+ Tree insert time cost:	8283ms
 
 round 5
- RB Tree insert time cost:	8232ms
-16 degree B+ Tree insert time cost:	6210ms
-18 degree B+ Tree insert time cost:	5901ms
-20 degree B+ Tree insert time cost:	5466ms
+ RB Tree insert time cost:	7686ms
+404 degree B+ Tree insert time cost:	8373ms
+398 degree B+ Tree insert time cost:	8267ms
+400 degree B+ Tree insert time cost:	8230ms
 
 round 6
- RB Tree insert time cost:	7522ms
-16 degree B+ Tree insert time cost:	6110ms
-18 degree B+ Tree insert time cost:	5547ms
-20 degree B+ Tree insert time cost:	5341ms
+ RB Tree insert time cost:	8346ms
+404 degree B+ Tree insert time cost:	8729ms
+398 degree B+ Tree insert time cost:	8513ms
+400 degree B+ Tree insert time cost:	8379ms
 
 round 7
- RB Tree insert time cost:	7384ms
-16 degree B+ Tree insert time cost:	5794ms
-18 degree B+ Tree insert time cost:	5476ms
-20 degree B+ Tree insert time cost:	5285ms
+ RB Tree insert time cost:	8045ms
+404 degree B+ Tree insert time cost:	8437ms
+398 degree B+ Tree insert time cost:	8289ms
+400 degree B+ Tree insert time cost:	8381ms
 
 round 8
- RB Tree insert time cost:	7394ms
-16 degree B+ Tree insert time cost:	5704ms
-18 degree B+ Tree insert time cost:	5476ms
-20 degree B+ Tree insert time cost:	5253ms
+ RB Tree insert time cost:	7672ms
+404 degree B+ Tree insert time cost:	8379ms
+398 degree B+ Tree insert time cost:	8255ms
+400 degree B+ Tree insert time cost:	8288ms
 
 round 9
- RB Tree insert time cost:	7353ms
-16 degree B+ Tree insert time cost:	5708ms
-18 degree B+ Tree insert time cost:	5414ms
-20 degree B+ Tree insert time cost:	5227ms
+ RB Tree insert time cost:	7778ms
+404 degree B+ Tree insert time cost:	9269ms
+398 degree B+ Tree insert time cost:	8303ms
+400 degree B+ Tree insert time cost:	8324ms
 
 round 10
- RB Tree insert time cost:	7336ms
-16 degree B+ Tree insert time cost:	5686ms
-18 degree B+ Tree insert time cost:	5395ms
-20 degree B+ Tree insert time cost:	5278ms
+ RB Tree insert time cost:	7546ms
+404 degree B+ Tree insert time cost:	8437ms
+398 degree B+ Tree insert time cost:	8347ms
+400 degree B+ Tree insert time cost:	8308ms
 

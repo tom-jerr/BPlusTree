@@ -5,6 +5,9 @@
 
 Checks: >
   *,
+  -fuchsia-statically-constructed-objects,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-narrowing-conversions,
   -performance-enum-size,
   -llvmlibc-inline-function-decl,

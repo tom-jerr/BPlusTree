@@ -10,9 +10,9 @@
 #include "../include/CLBPlusTree.h"
 
 #define TENMILLION 10000000
-#define TEST_DEGREE20 200
-#define TEST_DEGREE16 160
-#define TEST_DEGREE18 180
+#define TEST_DEGREE20 400
+#define TEST_DEGREE16 404
+#define TEST_DEGREE18 398
 #define TEST_ROUND 10
 
 void rb_tree_test() {
@@ -29,12 +29,13 @@ void rb_tree_test() {
   uint64_t cost_rb = end_rb - begin_rb;
   std::cout << "RB Tree insert time cost:\t" << cost_rb << "ms" << '\n';
   std::fstream f;
-  f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
+  f.open("../../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
   f << " RB Tree insert time cost:\t" << cost_rb << "ms" << '\n';
   f.close();
 
   std::fstream data;
-  data.open("../doc/analysis/rb_test_data.txt", std::ios::out | std::ios::app);
+  data.open("../../doc/analysis/rb_test_data.txt",
+            std::ios::out | std::ios::app);
   data << cost_rb << ',';
   data.close();
   rbtree.clear();
@@ -56,7 +57,7 @@ void b_plus_tree_test(int degree) {
   std::cout << "B+ Tree degree " << degree << " insert time cost:\t" << cost
             << "ms" << '\n';
   std::fstream f;
-  f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
+  f.open("../../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
   f << degree << " degree B+ Tree insert time cost:\t" << cost << "ms" << '\n';
   f.close();
 
@@ -65,19 +66,19 @@ void b_plus_tree_test(int degree) {
   std::fstream data2;
   switch (degree) {
     case TEST_DEGREE16:
-      data.open("../doc/analysis/bplustree_test_data16.txt",
+      data.open("../../doc/analysis/bplustree_test_data16.txt",
                 std::ios::out | std::ios::app);
       data << cost << ',';
       data.close();
       break;
     case TEST_DEGREE18:
-      data1.open("../doc/analysis/bplustree_test_data18.txt",
+      data1.open("../../doc/analysis/bplustree_test_data18.txt",
                  std::ios::out | std::ios::app);
       data1 << cost << ',';
       data1.close();
       break;
     case TEST_DEGREE20:
-      data2.open("../doc/analysis/bplustree_test_data20.txt",
+      data2.open("../../doc/analysis/bplustree_test_data20.txt",
                  std::ios::out | std::ios::app);
       data2 << cost << ',';
       data2.close();
@@ -100,13 +101,15 @@ int main(int /*argc*/, char** /*argv*/) {
   for (int i = 0; i < TEST_ROUND; ++i) {
     std::cout << "round " << i + 1 << '\n';
     std::fstream f;
-    f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
+    f.open("../../doc/analysis/compare_test.txt",
+           std::ios::out | std::ios::app);
     f << "round " << i + 1 << '\n';
     f.close();
     // B+树和红黑树比较测试
     compare_test();
 
-    f.open("../doc/analysis/compare_test.txt", std::ios::out | std::ios::app);
+    f.open("../../doc/analysis/compare_test.txt",
+           std::ios::out | std::ios::app);
     f << '\n';
     f.close();
     std::cout << '\n';

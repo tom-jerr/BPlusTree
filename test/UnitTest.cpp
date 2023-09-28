@@ -244,6 +244,7 @@ TEST_F(DeleteTree, deleteAlltest) {
   for (int i : delete_data) {
     // tree->show_bplustree();
     tree->tree_delete(i);
+    // std::cout << "\n";
   }
   // tree->show_bplustree();
   std::vector<int> ans = {};

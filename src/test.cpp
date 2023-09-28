@@ -117,10 +117,11 @@ void delete_test() {
   delete tree;
 }
 int main(int /*argc*/, char** /*argv*/) {
+  serialization_test();
   // latch_search_test();
   // delete_test();
 
   // latch_insert_test();
-  delete_latch_test();
+  // delete_latch_test();
   return 0;
 }

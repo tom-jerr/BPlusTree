@@ -9,7 +9,9 @@
 
 #define TENMILLION 10000000
 #define OPEN_CODE 00700
-#define TEST_DEGREE 500
+
+#define TEST_DEGREE_BEGIN 3
+#define TEST_DEGREE_END 500
 void insert_tenmillion(int degree) {
   auto* tree = new BPlusTree<int, uint64_t>(degree);
 
@@ -26,9 +28,10 @@ void insert_tenmillion(int degree) {
   std::cout << degree << " degree B+ Tree insert time cost:\t" << cost << "ms"
             << '\n';
   std::fstream f;
-  f.open("../doc/analysis/degree_test.txt", std::ios::out | std::ios::app);
+  f.open("../../doc/analysis/degree_test.txt", std::ios::out | std::ios::app);
   std::fstream data;
-  data.open("../doc/analysis/degree_data.txt", std::ios::out | std::ios::app);
+  data.open("../../doc/analysis/degree_data.txt",
+            std::ios::out | std::ios::app);
   f << degree << " degree B+ Tree insert time cost:\t" << cost << "ms" << '\n';
   data << cost << ",";
   f.close();
@@ -37,7 +40,7 @@ void insert_tenmillion(int degree) {
 }
 
 void degree_test() {
-  for (int i = 3; i <= TEST_DEGREE; i++) {
+  for (int i = TEST_DEGREE_BEGIN; i <= TEST_DEGREE_END; i++) {
     insert_tenmillion(i);
   }
 }
