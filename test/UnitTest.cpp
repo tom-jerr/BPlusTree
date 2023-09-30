@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "../include/CLBPlusTree.h"
+#include "../include/CLSerialization.h"
 
 class InsertTree : public ::testing::Test {
  public:
@@ -249,6 +250,34 @@ TEST_F(DeleteTree, deleteAlltest) {
   // tree->show_bplustree();
   std::vector<int> ans = {};
   ASSERT_EQ(tree->bfs(), ans);
+}
+
+class SerializationTree : public ::testing::Test {
+ public:
+  BPlusTree<int, uint64_t>* tree;
+  Serialization s;
+
+  void SetUp() override {
+    tree = new BPlusTree<int, uint64_t>();
+    for (int i = 1; i <= 5; ++i) {
+      tree->tree_insert(i, i);
+    }
+  }
+  void TearDown() override { delete tree; }
+};
+
+TEST_F(SerializationTree, serializationtest) {
+  std::string filename = "test.txt";
+  tree->show_bplustree();
+  std::cout << '\n';
+  s.serialize(*tree, filename);
+  auto* new_tree = new BPlusTree<int, uint64_t>();
+
+  new_tree = s.deserialize<int, uint64_t>(filename);
+  new_tree->show_bplustree();
+  std::vector<int> ans = new_tree->bfs();
+  ASSERT_EQ(ans, tree->bfs());
+  delete new_tree;
 }
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);

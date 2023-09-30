@@ -56,19 +56,6 @@
 ##### 注意
 - 读文件时，需要将叶子结点的关系进行重建；需要找到每个叶子结点的前驱结点
   - 策略：将叶子结点读取完毕后，需要重建叶子结点的链表；需要找到每个叶子结点的前驱结点；进行链表的复原
-##### DFS版本
-- 序列化
-  - 先把B+树的除根结点以外的成员写入；
-  - 写结点：
-    - 写入is_leaf, 关键字数量, 所有的关键字；
-    - 对内部结点的孩子递归该过程；
-    - 对叶子结点直接读入关键字对应的值
-- 反序列化，最后返回根结点：
-  - 先把B+树的除根结点以外的成员读入；
-  - 读结点，最后返回一个结点：
-    - 读is_leaf, 关键字数量, 所有的关键字；
-    - 递归该过程，返回的结点是该结点的孩子结点；
-    - 对叶子结点直接读入关键字对应的值
 ##### BFS版本
 - 序列化
   - 先把B+树的除根结点以外的成员写入；
@@ -195,8 +182,73 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
 }
 ~~~
 
-#### 3.4.3 DFS进行反序列化
-##### 3.4.3.1 寻找前驱结点
+
+#### 3.4.3 BFS进行反序列化
+##### 3.4.3.1 按层次遍历顺序进行结点的读取
+- `read_node_per()`是读取除开根结点外的每个结点
+~~~c++
+// BFS恢复结点
+template <typename K, typename T>
+Node<K, T>* Serialization::read_node_bfs(const int& fd) {
+  bool is_leaf = false;
+  if (read(fd, &is_leaf, sizeof(bool)) == -1) {
+    throw std::runtime_error("read is_leaf error\n");
+  }
+  // 返回的结点
+  Node<K, T>* pnode = nullptr;
+  if (!is_leaf) {
+    pnode = new InternalNode<K, T>();
+  } else {
+    pnode = new LeafNode<K, T>();
+  }
+  pnode->is_leaf = is_leaf;
+  pnode->parent = nullptr;
+  // 只有根结点在外面进行读取
+  // 关键字数组大小
+  int num = 0;
+  if (read(fd, &num, sizeof(num)) == -1) {
+    throw std::runtime_error("read keys size error\n");
+  }
+
+  // 读取关键字数组
+  int key = 0;
+  for (int i = 0; i < num; ++i) {
+    if (read(fd, &key, sizeof(K)) == -1) {
+      throw std::runtime_error("read key element error\n");
+    }
+    pnode->keys.push_back(key);
+  }
+
+  std::queue<Node<K, T>*> q;
+  q.push(pnode);
+  while (!q.empty()) {
+    Node<K, T>* now = q.front();
+    q.pop();
+    num = now->keys.size();
+    if (!now->is_leaf) {
+      // 读入孩子结点
+      for (int i = 0; i < num + 1; ++i) {
+        Node<K, T>* childnode = read_node_per(fd, now);
+        static_cast<InternalNode<K, T>*>(now)->child.push_back(childnode);
+        q.push(childnode);
+      }
+
+    } else {
+      // 构建链表
+      Node<K, T>* prenode = search_pre_node(now);
+      if (prenode) {
+        static_cast<LeafNode<K, T>*>(prenode)->next =
+            static_cast<LeafNode<K, T>*>(now);
+        static_cast<LeafNode<K, T>*>(now)->prev =
+            static_cast<LeafNode<K, T>*>(prenode);
+      }
+    }
+  }
+  return pnode;
+}
+
+~~~
+##### 3.4.3.2 寻找前驱结点
 ~~~c++
 template <typename K, typename T>
 Node<K, T>* search_pre_node(Node<K, T>* node) {
@@ -236,78 +288,6 @@ Node<K, T>* search_pre_node(Node<K, T>* node) {
 }
 ~~~
 
-##### 3.4.3.2 反序列化重建链表
-~~~c++
-if (!is_leaf) {
-    for (int i = 0; i < num + 1; ++i) {
-      static_cast<InternalNode<K, T>*>(pnode)->child.push_back(
-          read_node<K, T>(fd, pnode));
-    }
-    // 叶子结点链表恢复
-    for (int i = 0; i < num + 1; ++i) {
-      Node<K, T>* node = static_cast<InternalNode<K, T>*>(pnode)->child[i];
-      // 将链表连接起来
-      // 找到每个结点的前驱结点
-      Node<K, T>* prenode = search_pre_node(node);
-      if (prenode) {
-        static_cast<LeafNode<K, T>*>(prenode)->next =
-            static_cast<LeafNode<K, T>*>(node);
-        static_cast<LeafNode<K, T>*>(node)->prev =
-            static_cast<LeafNode<K, T>*>(prenode);
-      }
-    }
-  } else {
-    // 读叶子结点
-    int data = 0;
-    for (int i = 0; i < num; ++i) {
-      if (read(fd, &data, sizeof(T)) == -1) {
-        throw std::runtime_error("read data element error\n");
-      }
-      static_cast<LeafNode<K, T>*>(pnode)->data.push_back(data);
-    }
-  }
-~~~
-#### 3.4.4 BFS进行反序列化
-~~~c++
-template <typename K, typename T>
-void Serialization::write_node_bfs(const int& fd, Node<K, T>* node) {
-  std::queue<Node<K, T>*> q;
-  q.push(node);
-  while (!q.empty()) {
-    Node<K, T>* now = q.front();
-    q.pop();
-
-    if (write(fd, &now->is_leaf, sizeof(bool)) == -1) {
-      throw std::runtime_error("write node is_leaf error\n");
-    }
-    int num = now->keys.size();
-    // 写关键字数量
-    if (write(fd, &num, sizeof(int)) == -1) {
-      throw std::runtime_error("write node keys size error\n");
-    }
-    // 写关键字
-    for (int i = 0; i < num; ++i) {
-      if (write(fd, &now->keys[i], sizeof(K)) == -1) {
-        throw std::runtime_error("write node keys element error\n");
-      }
-    }
-
-    if (!now->is_leaf) {
-      for (int i = 0; i < num + 1; ++i) {
-        q.push(static_cast<InternalNode<K, T>*>(now)->child[i]);
-      }
-    } else {
-      // 写值
-      for (int i = 0; i < num; ++i) {
-        if (write(fd, &static_cast<LeafNode<K, T>*>(now)->data[i], sizeof(T)) ==
-            -1) {
-          throw std::runtime_error("write data element error\n");
-        }
-      }
-    }
-  }
-}
-~~~
 ### 3.5 程序分析
 #### 3.5.1 测试插入不同度的B+树
 - 从4度到500度，每次增加2
@@ -542,7 +522,7 @@ Each sample counts as 0.01 seconds.
 
 ![单元测试](img/unit_test.png)
 
-#### 4.1.5 序列化反序化测试
+### 4.1.4 序列化反序化测试
 - 输入：tree(插入<1,1>,<2,2>,<3,3>)
 - 反序列化后，插入：<4,4>; 然后依次删除直到成为空树
 ~~~shell
@@ -566,6 +546,21 @@ delete 3
 [4] 
 delete 4
 []
+~~~
+
+- 输入：一个50个结点的树
+- 反序列化后判断是否与原树相同
+~~~shell
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from SerializationTree
+[ RUN      ] SerializationTree.serializationtest
+[       OK ] SerializationTree.serializationtest (1 ms)
+[----------] 1 test from SerializationTree (1 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (1 ms total)
+[  PASSED  ] 1 test.
 ~~~
 ### 4.2 性能测试
 #### 4.2.1 与RB Tree比较
@@ -591,21 +586,23 @@ delete time cost:       9ms
 ~~~
 ## 5 总结
 - 插入操作
-  - 最开始寻找插入位置, 寻找key在关键字数组中的索引都使用的for循环线性查找; 现在改为二分查找
-  - key数量超过最大容纳数量后,需要分裂结点,最初只返回一个新分裂的结点
-  - 实际插入过程中发现还需要分裂后新结点的首个key; `insert_in_parent`函数需要同时传入原来的结点和分裂后的结点;
-  - 最后`split_leaf`,`split_inner`的返回值设计为`std::tuple<Node<K,T>*, Node<K,T>*, int>`形式; `insert_in_parent`函数参数也为该形式
+  - 最开始寻找插入位置, 寻找叶子结点, 寻找key在关键字数组中的索引都使用的for循环线性查找, 在度数增加后对性能影响明显; 改为二分查找后性能有所提升
+  - key数量超过最大容纳数量后, 需要分裂结点, 最初只返回一个新分裂的结点, 考虑尾递归可能编译器可以有更多的优化, `insert_in_parent`函数返回`std::tuple(Node<K,T>*, Node<K,T>*, int)`, 同时`split_leaf`,`split_inner`的返回值设计为`std::tuple<Node<K,T>*, Node<K,T>*, int>`形式
+
 - 删除操作
   - 将结点的借出操作和合并操作定义在B+树中, 方便操作
-  - 合并内部结点, 最开始直接将兄弟结点的关键字直接插入, 发现树的变化有问题; 发现需要考虑该结点的父结点的关键字
+  - 合并内部结点需要考虑合并后父结点的变化
 - 序列化反序列化
 
-   > DFS反序列化最开始忘记叶子结点链表的构建, 反序列化后的B+树删除有问题
-  - DFS反序列化叶子结点链表的构建
+   > BFS反序列化最开始忘记叶子结点链表的构建, 反序列化后的B+树删除有问题
+  - BFS反序列化叶子结点链表的构建
     - 需要找到叶子结点的前驱结点
     - 在内部结点处理逻辑中进行叶子结点链表的恢复
-  - 增加BFS序列化和反序列结点函数
   - 使用open函数, clang-tidy 提示`Do not call c-style vararg functions`, 在clang-tidy中排除检查即可
+- 并发控制
+  - 死锁问题：
+    1. 新建根结点获取锁后未释放写锁，后续结点访问新根结点时无法获取该写锁，根结点也无法执行释放锁的操作
+    
 
 
 

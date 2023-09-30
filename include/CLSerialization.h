@@ -116,99 +116,96 @@ BPlusTree<K, T>* Serialization::deserialize(const char* file) {
 // 写树中的结点
 
 // 先写is_leaf, keys.size(), keys; 根据is_leaf, 决定写data or child
-template <typename K, typename T>
-void Serialization::write_node(const int& fd, Node<K, T>* node) {
-  if (write(fd, &node->is_leaf, sizeof(bool)) == -1) {
-    throw std::runtime_error("write node is_leaf error\n");
-  }
+// template <typename K, typename T>
+// void Serialization::write_node(const int& fd, Node<K, T>* node) {
+//   if (write(fd, &node->is_leaf, sizeof(bool)) == -1) {
+//     throw std::runtime_error("write node is_leaf error\n");
+//   }
+//   int num = node->keys.size();
+//   // 写关键字数量
+//   if (write(fd, &num, sizeof(int)) == -1) {
+//     throw std::runtime_error("write node keys size error\n");
+//   }
+//   // 写关键字
+//   for (int i = 0; i < num; ++i) {
+//     if (write(fd, &node->keys[i], sizeof(K)) == -1) {
+//       throw std::runtime_error("write node keys element error\n");
+//     }
+//   }
+//   if (!node->is_leaf) {
+//     // write children
+//     for (int i = 0; i < num + 1; ++i) {
+//       write_node(fd, static_cast<InternalNode<K, T>*>(node)->child[i]);
+//     }
+//   } else {
+//     // 写值
+//     for (int i = 0; i < node->keys.size(); ++i) {
+//       if (write(fd, &static_cast<LeafNode<K, T>*>(node)->data[i], sizeof(T))
+//       ==
+//           -1) {
+//         throw std::runtime_error("write data element error\n");
+//       }
+//     }
+//   }
+// }
 
-  int num = node->keys.size();
-  // 写关键字数量
-  if (write(fd, &num, sizeof(int)) == -1) {
-    throw std::runtime_error("write node keys size error\n");
-  }
-  // 写关键字
-  for (int i = 0; i < num; ++i) {
-    if (write(fd, &node->keys[i], sizeof(K)) == -1) {
-      throw std::runtime_error("write node keys element error\n");
-    }
-  }
-  if (!node->is_leaf) {
-    // write children
-    for (int i = 0; i < num + 1; ++i) {
-      write_node(fd, static_cast<InternalNode<K, T>*>(node)->child[i]);
-    }
-  } else {
-    // 写值
-    for (int i = 0; i < node->keys.size(); ++i) {
-      if (write(fd, &static_cast<LeafNode<K, T>*>(node)->data[i], sizeof(T)) ==
-          -1) {
-        throw std::runtime_error("write data element error\n");
-      }
-    }
-  }
-}
-
-template <typename K, typename T>
-Node<K, T>* Serialization::read_node(const int& fd, Node<K, T>* parent) {
-  bool is_leaf = false;
-  if (read(fd, &is_leaf, sizeof(bool)) == -1) {
-    throw std::runtime_error("read is_leaf error\n");
-  }
-  // 返回的结点
-  Node<K, T>* pnode = nullptr;
-  if (!is_leaf) {
-    pnode = new InternalNode<K, T>();
-  } else {
-    pnode = new LeafNode<K, T>();
-  }
-  pnode->is_leaf = is_leaf;
-  pnode->parent = parent;
-
-  int num = 0;
-  if (read(fd, &num, sizeof(num)) == -1) {
-    throw std::runtime_error("read keys size error\n");
-  }
-
-  // 读取关键字数组
-  int key = 0;
-  for (int i = 0; i < num; ++i) {
-    if (read(fd, &key, sizeof(K)) == -1) {
-      throw std::runtime_error("read key element error\n");
-    }
-    pnode->keys.push_back(key);
-  }
-
-  if (!is_leaf) {
-    for (int i = 0; i < num + 1; ++i) {
-      static_cast<InternalNode<K, T>*>(pnode)->child.push_back(
-          read_node<K, T>(fd, pnode));
-    }
-    // 叶子结点链表恢复
-    for (int i = 0; i < num + 1; ++i) {
-      Node<K, T>* node = static_cast<InternalNode<K, T>*>(pnode)->child[i];
-      // 将链表连接起来
-      // 找到每个结点的前驱结点
-      Node<K, T>* prenode = search_pre_node(node);
-      if (prenode) {
-        static_cast<LeafNode<K, T>*>(prenode)->next =
-            static_cast<LeafNode<K, T>*>(node);
-        static_cast<LeafNode<K, T>*>(node)->prev =
-            static_cast<LeafNode<K, T>*>(prenode);
-      }
-    }
-  } else {
-    // 读叶子结点
-    int data = 0;
-    for (int i = 0; i < num; ++i) {
-      if (read(fd, &data, sizeof(T)) == -1) {
-        throw std::runtime_error("read data element error\n");
-      }
-      static_cast<LeafNode<K, T>*>(pnode)->data.push_back(data);
-    }
-  }
-  return pnode;
-}
+// template <typename K, typename T>
+// Node<K, T>* Serialization::read_node(const int& fd, Node<K, T>* parent) {
+//   bool is_leaf = false;
+//   if (read(fd, &is_leaf, sizeof(bool)) == -1) {
+//     throw std::runtime_error("read is_leaf error\n");
+//   }
+//   // 返回的结点
+//   Node<K, T>* pnode = nullptr;
+//   if (!is_leaf) {
+//     pnode = new InternalNode<K, T>();
+//   } else {
+//     pnode = new LeafNode<K, T>();
+//   }
+//   pnode->is_leaf = is_leaf;
+//   pnode->parent = parent;
+//   int num = 0;
+//   if (read(fd, &num, sizeof(num)) == -1) {
+//     throw std::runtime_error("read keys size error\n");
+//   }
+//   // 读取关键字数组
+//   int key = 0;
+//   for (int i = 0; i < num; ++i) {
+//     if (read(fd, &key, sizeof(K)) == -1) {
+//       throw std::runtime_error("read key element error\n");
+//     }
+//     pnode->keys.push_back(key);
+//   }
+//   if (!is_leaf) {
+//     for (int i = 0; i < num + 1; ++i) {
+//       static_cast<InternalNode<K, T>*>(pnode)->child.push_back(
+//           read_node<K, T>(fd, pnode));
+//     }
+//     // 叶子结点链表恢复
+//     for (int i = 0; i < num + 1; ++i) {
+//       Node<K, T>* node = static_cast<InternalNode<K, T>*>(pnode)->child[i];
+//       // 将链表连接起来
+//       // 找到每个结点的前驱结点
+//       Node<K, T>* prenode = search_pre_node(node);
+//       if (prenode) {
+//         static_cast<LeafNode<K, T>*>(prenode)->next =
+//             static_cast<LeafNode<K, T>*>(node);
+//         static_cast<LeafNode<K, T>*>(node)->prev =
+//             static_cast<LeafNode<K, T>*>(prenode);
+//       }
+//     }
+//   } else {
+//     // 读叶子结点
+//     int data = 0;
+//     for (int i = 0; i < num; ++i) {
+//       if (read(fd, &data, sizeof(T)) == -1) {
+//         throw std::runtime_error("read data element error\n");
+//       }
+//       static_cast<LeafNode<K, T>*>(pnode)->data.push_back(data);
+//     }
+//   }
+//   return pnode;
+// }
 
 template <typename K, typename T>
 void Serialization::write_node_bfs(const int& fd, Node<K, T>* node) {
@@ -309,41 +306,36 @@ Node<K, T>* Serialization::read_node_bfs(const int& fd) {
   }
   pnode->is_leaf = is_leaf;
   pnode->parent = nullptr;
+  // 只有根结点在外面进行读取
+  // 关键字数组大小
+  int num = 0;
+  if (read(fd, &num, sizeof(num)) == -1) {
+    throw std::runtime_error("read keys size error\n");
+  }
+
+  // 读取关键字数组
+  int key = 0;
+  for (int i = 0; i < num; ++i) {
+    if (read(fd, &key, sizeof(K)) == -1) {
+      throw std::runtime_error("read key element error\n");
+    }
+    pnode->keys.push_back(key);
+  }
 
   std::queue<Node<K, T>*> q;
   q.push(pnode);
   while (!q.empty()) {
     Node<K, T>* now = q.front();
     q.pop();
-    if (now != pnode) {
-      if (read(fd, &now->is_leaf, sizeof(bool)) == -1) {
-        throw std::runtime_error("read is_leaf error\n");
-      }
-    }
-    // 关键字数组大小
-    int num = 0;
-    if (read(fd, &num, sizeof(num)) == -1) {
-      throw std::runtime_error("read keys size error\n");
-    }
-
-    // 读取关键字数组
-    int key = 0;
-    for (int i = 0; i < num; ++i) {
-      if (read(fd, &key, sizeof(K)) == -1) {
-        throw std::runtime_error("read key element error\n");
-      }
-      now->keys.push_back(key);
-    }
-
+    num = now->keys.size();
     if (!now->is_leaf) {
       // 读入孩子结点
       for (int i = 0; i < num + 1; ++i) {
-        static_cast<InternalNode<K, T>*>(pnode)->child.push_back(
-            read_node_per(fd, pnode));
+        Node<K, T>* childnode = read_node_per(fd, now);
+        static_cast<InternalNode<K, T>*>(now)->child.push_back(childnode);
+        q.push(childnode);
       }
-      for (int i = 0; i < num + 1; ++i) {
-        q.push(static_cast<InternalNode<K, T>*>(now)->child[i]);
-      }
+
     } else {
       // 构建链表
       Node<K, T>* prenode = search_pre_node(now);
