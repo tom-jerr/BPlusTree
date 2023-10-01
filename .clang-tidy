@@ -5,6 +5,8 @@
 
 Checks: >
   *,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cert-err58-cpp,
   -fuchsia-statically-constructed-objects,
   -readability-magic-numbers,
   -cppcoreguidelines-avoid-magic-numbers,

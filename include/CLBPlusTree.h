@@ -1078,8 +1078,8 @@ void BPlusTree<K, T>::merge_left_inner(int pos, Node<K, T>* node,
 template <typename K, typename T>
 void BPlusTree<K, T>::tree_delete(K key, Node<K, T>* node) {
   std::deque<Node<K, T>*> prelatch;
-  // tree_delete_latch(key, node, &prelatch);
-  tree_delete_nolatch(key, node);
+  tree_delete_latch(key, node, &prelatch);
+  // tree_delete_nolatch(key, node);
 }
 
 template <typename K, typename T>
