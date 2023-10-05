@@ -288,6 +288,100 @@ Node<K, T>* search_pre_node(Node<K, T>* node) {
 }
 ~~~
 
+#### 3.4.6 并发控制
+- 使用的是悲观锁，适用于插入或删除操作更多的情况
+- 判断是否一个结点插入或删除后是安全的(不分裂或合并)
+
+~~~c++
+// 判断当前结点是否安全
+template <typename K, typename T>
+bool BPlusTree<K, T>::is_safe_node(Node<K, T>* node, Operation op) {
+  // 所有结点读操作均安全
+  if (op == Operation::read) {
+    return true;
+  }
+  // 插入时结点小于最大值即可
+  if (op == Operation::insert) {
+    return node->keys.size() < static_cast<VecSize>(this->maxcap_);
+  }
+  // 删除结点时，考虑是否为根结点
+  if (op == Operation::remove) {
+    if (node == this->root_) {
+      if (node->is_leaf) {
+        return node->keys.size() > 1;
+      }
+      return node->keys.size() > 2;
+    }
+    return node->keys.size() > static_cast<VecSize>(this->mincap_);
+  }
+  return false;
+}
+~~~
+- 寻找根结点途中进行锁的获取
+  - 获取读锁，获取到子结点的锁，立即释放父结点的锁
+  - 获取写锁，如果结点安全释放所有祖先结点的锁，否则，将当前锁加入锁队列，一直到叶子结点操作结束
+
+~~~c++
+// 在加入写锁的条件下，寻找到叶子结点，返回叶子结点
+template <typename K, typename T>
+Node<K, T>* BPlusTree<K, T>::find_leaf_latch(
+    int key, Operation op, std::deque<Node<K, T>*>* prelatch) {
+  Node<K, T>* p_node = this->root_;
+
+  if (op == Operation::read) {
+    return find_leaf_read(key);
+  }
+  // 加入写锁
+  p_node->latch.w_lock();
+  prelatch->push_back(p_node);
+  // 直接返回根结点
+  if (p_node->is_leaf) {
+    return p_node;
+  }
+
+  while (!p_node->is_leaf) {
+    int index = p_node->find_first_big_pos(key);
+    // 更新前一个结点
+
+    if (index >= 0) {
+      if (p_node->keys[index] == key) {
+        // 子结点先加锁，如果子结点是安全的，释放前面的所有祖先的锁
+        // 将子结点的锁加入队列
+        static_cast<InternalNode<K, T>*>(p_node)
+            ->child[index + 1]
+            ->latch.w_lock();
+        // 走到子结点处
+        p_node = static_cast<InternalNode<K, T>*>(p_node)->child[index + 1];
+        if (is_safe_node(p_node, Operation::insert)) {
+          release_w_latch(prelatch);
+        }
+        prelatch->push_back(p_node);
+
+      } else if (p_node->keys[index] < key) {
+        static_cast<InternalNode<K, T>*>(p_node)
+            ->child[p_node->keys.size()]
+            ->latch.w_lock();
+        p_node = static_cast<InternalNode<K, T>*>(p_node)
+                     ->child[p_node->keys.size()];
+        if (is_safe_node(p_node, Operation::insert)) {
+          release_w_latch(prelatch);
+        }
+        prelatch->push_back(p_node);
+
+      } else {
+        static_cast<InternalNode<K, T>*>(p_node)->child[index]->latch.w_lock();
+        p_node = static_cast<InternalNode<K, T>*>(p_node)->child[index];
+        if (is_safe_node(p_node, Operation::insert)) {
+          release_w_latch(prelatch);
+        }
+        prelatch->push_back(p_node);
+      }
+    }
+  }
+  return p_node;
+}
+~~~
+- 删除时对合并结点进行获取锁和释放锁，但是不需要加入锁队列
 ### 3.5 程序分析
 #### 3.5.1 测试插入不同度的B+树
 - 从4度到500度，每次增加2
@@ -518,11 +612,7 @@ Each sample counts as 0.01 seconds.
 ##### 4.1.3.2 范围查找
 - 查询：1-20之间的数据
 
-#### 测试结果
-
-![单元测试](img/unit_test.png)
-
-### 4.1.4 序列化反序化测试
+#### 4.1.4 序列化反序化测试
 - 输入：tree(插入<1,1>,<2,2>,<3,3>)
 - 反序列化后，插入：<4,4>; 然后依次删除直到成为空树
 ~~~shell
@@ -562,6 +652,45 @@ delete 4
 [==========] 1 test from 1 test suite ran. (1 ms total)
 [  PASSED  ] 1 test.
 ~~~
+
+**测试结果**
+
+![单元测试](img/unit_test.png)
+
+#### 4.1.5 并发B+树测试
+1. 三个线程分别插入1-3，4-6，7-10
+2. 两个线程，一个进行插入1-10和查找1-5和删除6-10，一个进行插入11-15和查找11-15
+3. 两个线程，初始B+树已经插入1-10；第一个线程删除6-10，第二个线程插入11-15并查找11-15
+
+**结果**
+~~~shell
+[==========] Running 3 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 3 tests from ConcurrentTree
+[ RUN      ] ConcurrentTree.ConcurrentInserttest
+[5] 
+[3] [7] 
+[2] [4] [6] [8,9] 
+[1] [2] [3] [4] [5] [6] [7] [8] [9,10] 
+[       OK ] ConcurrentTree.ConcurrentInserttest (0 ms)
+[ RUN      ] ConcurrentTree.Concurrenttest
+[5] 
+[3] [13] 
+[2] [4] [11,12] [14] 
+[1] [2] [3] [4] [5] [11] [12] [13] [14,15] 
+[       OK ] ConcurrentTree.Concurrenttest (0 ms)
+[ RUN      ] ConcurrentTree.Concurrenttest2
+[5] 
+[3] [13] 
+[2] [4] [11,12] [14] 
+[1] [2] [3] [4] [5] [11] [12] [13] [14,15] 
+[       OK ] ConcurrentTree.Concurrenttest2 (0 ms)
+[----------] 3 tests from ConcurrentTree (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 3 tests from 1 test suite ran. (1 ms total)
+[  PASSED  ] 3 tests.
+~~~
 ### 4.2 性能测试
 #### 4.2.1 与RB Tree比较
 - 分别对度为16, 18, 20的B+树和红黑树插入1千万个结点
@@ -569,6 +698,8 @@ delete 4
 ![compare_test](img/compare_test.png)
 
 #### 4.2.2 对18度和20度，400和404度B+树测试
+- 对在度数测试中表现较好的4个度数的B+树进行1千万结点插入、1千万结点查找、1千万结点删除的测试
+  
 ~~~shell
 18 B+ tree insert time cost:    5801ms
 search time cost:       3013ms
@@ -602,6 +733,8 @@ delete time cost:       9ms
 - 并发控制
   - 死锁问题：
     1. 新建根结点获取锁后未释放写锁，后续结点访问新根结点时无法获取该写锁，根结点也无法执行释放锁的操作
+    2. 范围查找与改变B+树操作之间锁的竞争；可能会造成死锁，该问题暂时未解决
+  - 获取祖先结点锁的方式：初始考虑直接构造锁的队列，但是发现读写锁(shared_mutex)不能拷贝，采用Node<K,T>*队列来进行祖先锁的存放
     
 
 

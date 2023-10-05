@@ -5,6 +5,7 @@
 
 Checks: >
   *,
+  -readability-make-member-function-const,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cert-err58-cpp,
   -fuchsia-statically-constructed-objects,

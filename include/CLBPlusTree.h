@@ -268,7 +268,7 @@ Node<K, T>* BPlusTree<K, T>::find_leaf_latch(
   if (op == Operation::read) {
     return find_leaf_read(key);
   }
-  // 加入写锁，根结点写锁规定为nullptr
+  // 加入写锁
   p_node->latch.w_lock();
   prelatch->push_back(p_node);
   // 直接返回根结点
@@ -283,6 +283,7 @@ Node<K, T>* BPlusTree<K, T>::find_leaf_latch(
     if (index >= 0) {
       if (p_node->keys[index] == key) {
         // 子结点先加锁，如果子结点是安全的，释放前面的所有祖先的锁
+        // 将子结点的锁加入队列
         static_cast<InternalNode<K, T>*>(p_node)
             ->child[index + 1]
             ->latch.w_lock();
@@ -619,24 +620,6 @@ std::tuple<Node<K, T>*, Node<K, T>*, K> LeafNode<K, T>::split_leaf() {
   return std::make_tuple(p_node, this, this->keys[0]);
 }
 
-// template <typename K, typename T>
-// std::tuple<Node<K, T>*, Node<K, T>*, K> LeafNode<K, T>::split_leaf_latch(
-//         std::deque<Node<K, T>*>* prelatch) {
-//   auto* p_node = new LeafNode<K, T>(prev, this);
-//   p_node->parent = this->parent;
-//   // prelatch->push_back(p_node->latch);
-//   int mid = this->keys.size() / 2;
-//   // 将一半的keys给另一个新节点
-//   p_node->keys = std::vector<K>(this->keys.begin(), this->keys.begin() +
-//   mid); p_node->data = std::vector<T>(this->data.begin(), this->data.begin()
-//   + mid);
-
-//   this->keys.erase(this->keys.begin(), this->keys.begin() + mid);
-//   this->data.erase(this->data.begin(), this->data.begin() + mid);
-
-//   return std::make_tuple(p_node, this, this->keys[0]);
-// }
-
 template <typename K, typename T>
 std::tuple<Node<K, T>*, Node<K, T>*, K> InternalNode<K, T>::split_inner() {
   auto* p_node = new InternalNode<K, T>();
@@ -659,33 +642,6 @@ std::tuple<Node<K, T>*, Node<K, T>*, K> InternalNode<K, T>::split_inner() {
   return std::make_tuple(p_node, this, key);
 }
 
-// template <typename K, typename T>
-// std::tuple<Node<K, T>*, Node<K, T>*, K> InternalNode<K,
-// T>::split_inner_latch(
-//         std::deque<Node<K, T>*>* prelatch) {
-//   auto* p_node = new InternalNode<K, T>();
-//   p_node->parent = this->parent;
-
-//   // // 将新结点的锁加入锁队列
-//   // prelatch->push_back(p_node->latch);
-
-//   int mid = this->keys.size() / 2;
-//   copy(this->keys.begin(), this->keys.begin() + mid,
-//        back_inserter(p_node->keys));
-//   copy(this->child.begin(), this->child.begin() + mid + 1,
-//        back_inserter(p_node->child));
-
-//   // 将父亲节点进行赋值
-//   for (auto* ch : p_node->child) {
-//     ch->parent = p_node;
-//   }
-//   K key = this->keys[mid];
-//   this->keys.erase(this->keys.begin(), this->keys.begin() + mid + 1);
-//   this->child.erase(this->child.begin(), this->child.begin() + mid + 1);
-
-//   return std::make_tuple(p_node, this, key);
-// }
-
 template <typename K, typename T>
 void BPlusTree<K, T>::insert_in_parent(
     std::tuple<Node<K, T>*, Node<K, T>*, K> result) {
@@ -698,7 +654,6 @@ void BPlusTree<K, T>::insert_in_parent(
     this->depth_ += 1;
     new_root->keys.push_back(key);
     static_cast<InternalNode<K, T>*>(new_root)->child = {left, right};
-    // static_cast<InternalNode<K, T>*>(new_root)->child.push_back(new_node);
     this->root_ = new_root;
     left->parent = this->root_;
     right->parent = this->root_;
@@ -716,46 +671,6 @@ void BPlusTree<K, T>::insert_in_parent(
     std::tuple<Node<K, T>*, Node<K, T>*, K> new_inner =
         static_cast<InternalNode<K, T>*>(parent)->split_inner();
     insert_in_parent(new_inner);
-  }
-}
-
-template <typename K, typename T>
-void BPlusTree<K, T>::insert_in_parent_latch(
-    std::tuple<Node<K, T>*, Node<K, T>*, K> result,
-    std::deque<Node<K, T>*>* prelatch) {
-  int key = std::get<2>(result);
-  Node<K, T>* left = std::get<0>(result);
-  Node<K, T>* right = std::get<1>(result);
-  // old_node是根节点
-  if (right->parent == nullptr) {
-    Node<K, T>* new_root = new InternalNode<K, T>();
-
-    // 新生成的根结点的latch也要加入prelatch
-    prelatch->push_back(new_root);
-
-    this->depth_ += 1;
-    new_root->keys.push_back(key);
-    static_cast<InternalNode<K, T>*>(new_root)->child = {left, right};
-    // static_cast<InternalNode<K, T>*>(new_root)->child.push_back(new_node);
-    this->root_ = new_root;
-    left->parent = this->root_;
-    right->parent = this->root_;
-    return;
-  }
-
-  Node<K, T>* parent = right->parent;
-  // 分裂时根结点的祖先结点的写锁已经被锁住
-  bool op_inner = static_cast<InternalNode<K, T>*>(parent)->insert_inner(
-      {left, right}, key);
-  if (!op_inner) {
-    std::cout << "failed to insert inner"
-              << "\n";
-  }
-  if (parent->keys.size() > this->maxcap_) {
-    // 新建结点不会被访问到，不必加入锁队列
-    std::tuple<Node<K, T>*, Node<K, T>*, K> new_inner =
-        static_cast<InternalNode<K, T>*>(parent)->split_inner();
-    insert_in_parent_latch(new_inner, prelatch);
   }
 }
 
@@ -810,7 +725,6 @@ void BPlusTree<K, T>::tree_insert_latch(K key, T data,
   }
 
   // 此时拥有叶子结点的latch和祖先的latch
-  // TODO(lzy): deadlock
   Node<K, T>* p_node = find_leaf_latch(key, Operation::insert, prelatch);
 
   // 此时为叶子节点
@@ -823,6 +737,8 @@ void BPlusTree<K, T>::tree_insert_latch(K key, T data,
     // 新建结点的父结点已经锁住，同时还未插入到父结点，无法访问到
     std::tuple<Node<K, T>*, Node<K, T>*, K> new_node =
         static_cast<LeafNode<K, T>*>(p_node)->split_leaf();
+    // 此时所有祖先节点均已经被锁住，新建根结点无法被访问，不需要加锁
+    // 新建结点变为根结点但还未释放锁时，进程获取根结点的锁，不会影响树的结构调整
     insert_in_parent(new_node);
   }
   // 等待B+树调整完毕后，释放所有的写锁
@@ -1078,7 +994,9 @@ void BPlusTree<K, T>::merge_left_inner(int pos, Node<K, T>* node,
 template <typename K, typename T>
 void BPlusTree<K, T>::tree_delete(K key, Node<K, T>* node) {
   std::deque<Node<K, T>*> prelatch;
+  // 加锁版本的删除
   tree_delete_latch(key, node, &prelatch);
+  // 无锁版本删除
   // tree_delete_nolatch(key, node);
 }
 
