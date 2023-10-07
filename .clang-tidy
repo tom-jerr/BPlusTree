@@ -5,6 +5,9 @@
 
 Checks: >
   *,
+  -performance-inefficient-vector-operation,
+  -modernize-use-emplace,
+  -hicpp-use-emplace,
   -readability-make-member-function-const,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cert-err58-cpp,

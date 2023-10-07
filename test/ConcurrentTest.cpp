@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <thread>
+#include <vector>
 
 #include "../include/CLBPlusTree.h"
 
@@ -20,14 +21,17 @@ void thread_insert_base(int begin, int end, BPlusTree<int, uint64_t>* tree) {
   }
 }
 
+void thread_delete_base(int begin, int end, BPlusTree<int, uint64_t>* tree) {
+  for (int i = begin; i <= end; ++i) {
+    tree->tree_delete(i);
+  }
+}
+
 void thread_op1(BPlusTree<int, uint64_t>* tree) {
   thread_insert_base(1, 10, tree);
   for (int i = 1; i <= 5; ++i) {
     uint64_t data = tree->search(i);
     assert(data == i);
-  }
-  for (int i = 6; i <= 10; ++i) {
-    tree->tree_delete(i);
   }
 }
 
@@ -53,13 +57,27 @@ void thread_op4(BPlusTree<int, uint64_t>* tree) {
   }
 }
 void thread_insert_test(BPlusTree<int, uint64_t>* tree) {
-  std::thread t1(thread_insert_base, 1, 3, tree);
-  std::thread t2(thread_insert_base, 4, 6, tree);
-  std::thread t3(thread_insert_base, 7, 10, tree);
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 100; ++i) {
+    threads.push_back(
+        std::thread(thread_insert_base, i * 100 + 1, i * 100 + 100, tree));
+  }
 
-  t1.join();
-  t2.join();
-  t3.join();
+  for (auto& thread : threads) {
+    thread.join();
+  }
+}
+
+void thread_delete_test(BPlusTree<int, uint64_t>* tree) {
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 3; ++i) {
+    threads.push_back(
+        std::thread(thread_delete_base, i * 10 + 1, i * 10 + 10, tree));
+  }
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
 }
 
 void thread_op_test(BPlusTree<int, uint64_t>* tree) {
@@ -79,10 +97,23 @@ void thread_op_test2(BPlusTree<int, uint64_t>* tree) {
 }
 
 TEST(ConcurrentTree, ConcurrentInserttest) {
-  auto* tree = new BPlusTree<int, uint64_t>();
+  auto* tree = new BPlusTree<int, uint64_t>(10);
   thread_insert_test(tree);
-  tree->show_bplustree();
+  // tree->show_bplustree();
   delete tree;
+}
+
+TEST(ConcurrentTree, ConcurrentDeletetest) {
+  auto* tree = new BPlusTree<int, uint64_t>();
+  for (int i = 1; i <= 60; ++i) {
+    tree->tree_insert(i, i);
+  }
+  tree->show_bplustree();
+  std::cout << "\n";
+  thread_delete_test(tree);
+  tree->show_bplustree();
+  std::cout << "\n";
+  // delete tree;
 }
 
 TEST(ConcurrentTree, Concurrenttest) {

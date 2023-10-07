@@ -12,6 +12,10 @@ add_executable(RESULTTEST ResultTest.cpp)
 add_executable(COMPARETEST CompareRBTest.cpp)
 # 并发B+树测试
 add_executable(CONCURRENTTEST ConcurrentTest.cpp)
+# 不同线程数测试
+add_executable(THREADTEST ThreadTest.cpp)
+
+target_include_directories(THREADTEST PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_include_directories(CONCURRENTTEST PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 target_include_directories(UNITTEST PRIVATE ${CMAKE_SOURCE_DIR}/include)

@@ -237,12 +237,6 @@ bool BPlusTree<K, T>::is_safe_node(Node<K, T>* node, Operation op) {
   }
   // 删除结点时，考虑是否为根结点
   if (op == Operation::remove) {
-    if (node == this->root_) {
-      if (node->is_leaf) {
-        return node->keys.size() > 1;
-      }
-      return node->keys.size() > 2;
-    }
     return node->keys.size() > static_cast<VecSize>(this->mincap_);
   }
   return false;
@@ -287,9 +281,11 @@ Node<K, T>* BPlusTree<K, T>::find_leaf_latch(
         static_cast<InternalNode<K, T>*>(p_node)
             ->child[index + 1]
             ->latch.w_lock();
+
         // 走到子结点处
         p_node = static_cast<InternalNode<K, T>*>(p_node)->child[index + 1];
-        if (is_safe_node(p_node, Operation::insert)) {
+        // 先判断是否可以释放父结点的锁
+        if (is_safe_node(p_node, op)) {
           release_w_latch(prelatch);
         }
         prelatch->push_back(p_node);
@@ -298,9 +294,10 @@ Node<K, T>* BPlusTree<K, T>::find_leaf_latch(
         static_cast<InternalNode<K, T>*>(p_node)
             ->child[p_node->keys.size()]
             ->latch.w_lock();
+
         p_node = static_cast<InternalNode<K, T>*>(p_node)
                      ->child[p_node->keys.size()];
-        if (is_safe_node(p_node, Operation::insert)) {
+        if (is_safe_node(p_node, op)) {
           release_w_latch(prelatch);
         }
         prelatch->push_back(p_node);
@@ -308,7 +305,7 @@ Node<K, T>* BPlusTree<K, T>::find_leaf_latch(
       } else {
         static_cast<InternalNode<K, T>*>(p_node)->child[index]->latch.w_lock();
         p_node = static_cast<InternalNode<K, T>*>(p_node)->child[index];
-        if (is_safe_node(p_node, Operation::insert)) {
+        if (is_safe_node(p_node, op)) {
           release_w_latch(prelatch);
         }
         prelatch->push_back(p_node);
@@ -909,7 +906,7 @@ void BPlusTree<K, T>::merge_right_leaf(Node<K, T>* node, Node<K, T>* next) {
       break;
     }
   }
-  delete next;
+  // delete next;
 }
 
 // 将node合并到prev中
@@ -965,7 +962,7 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
   for (Node<K, T>* child : static_cast<InternalNode<K, T>*>(node)->child) {
     child->parent = node;
   }
-  delete next;
+  // delete next;
 }
 
 template <typename K, typename T>
@@ -1141,7 +1138,7 @@ void BPlusTree<K, T>::tree_delete_latch(K key, Node<K, T>* node,
 
         // 旧的根结点需要解锁，从队列中删除
         delete_node->latch.w_unlock();
-        prelatch->pop_back();
+        prelatch->pop_front();
         delete delete_node;
       }
       return;

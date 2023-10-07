@@ -45,12 +45,33 @@ void degree_test() {
   }
 }
 
+void thread_delete_test() {
+  auto* tree = new BPlusTree<int, uint64_t>(3);
+  for (int i = 1; i <= 10000000; ++i) {
+    tree->tree_insert(i, i);
+  }
+  std::cout << "insert done\n";
+  // tree->show_bplustree();
+  // for (int j = 0; j < 10; ++j) {
+  //   for (int i = 1; i <= 1000000; ++i) {
+  //     tree->tree_delete(j * 1000000 + i);
+  //     // tree->show_bplustree();
+  //   }
+  //   std::cout << j << " round delete done\n";
+  // }
+  for (int i = 1; i <= 10000000; ++i) {
+    tree->tree_delete(i);
+  }
+  tree->show_bplustree();
+  std::cout << "delete done\n";
+}
 int main(int /*argc*/, char** /*argv*/) {
-  degree_test();
+  // degree_test();
   // auto* tree = new BPlusTree<int, uint64_t>(5);
   // for (int i = 1; i <= 13; ++i) {
   //   tree->tree_insert(i, i);
   // }
   // tree->show_bplustree();
+  thread_delete_test();
   return 0;
 }
