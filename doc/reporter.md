@@ -181,8 +181,6 @@ void BPlusTree<K, T>::merge_right_inner(int pos, Node<K, T>* node,
   }
 }
 ~~~
-
-
 #### 3.4.3 BFS进行反序列化
 ##### 3.4.3.1 按层次遍历顺序进行结点的读取
 - `read_node_per()`是读取除开根结点外的每个结点
@@ -732,6 +730,14 @@ delete time cost:       8ms
 404 B+ tree insert time cost:   3552ms
 search time cost:       2816ms
 delete time cost:       9ms
+~~~
+#### 4.2.3 对树进行并发插入1千万结点测试
+
+~~~shell
+single thread B+ tree 
+insert time cost:       8039ms
+multithread
+insert time cost:       5369ms
 ~~~
 ## 5 总结
 - 插入操作

@@ -21,13 +21,22 @@
 chmod +x setup.sh
 chmod +x test.sh
 ./setup.sh
-./test.sh
 ~~~
 - 自己进行cmake项目构建
 ~~~shell
 cmake -S . -B ./build
 cmake --build ./build
-./build/bin/UNITTEST
-./build/bin/PERFROMTEST
 ~~~
-
+- 测试可执行文件在./build/bin文件夹下
+~~~ shell
+COMPARETEST: 比较B+树和std::map(内部红黑树实现)插入1千万结点的时间
+COMCURRENTTEST: 并发B+树的测试
+PERFROMTEST: 1千万结点的性能测试
+SERIALIZETEST: B+树序列化测试
+UNITTEST: 单元测试，测试B+树正确性
+~~~
+  - 执行test.sh脚本，进行单元测试，性能测试和并发测试
+  ~~~shell
+  chmod +x ./test.sh
+  ./test.sh
+  ~~~
